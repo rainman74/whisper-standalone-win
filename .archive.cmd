@@ -1,0 +1,1 @@
+@tar -a -c -f whisper-standalone-win-binaries.zip --exclude="_models" --exclude=".git" --exclude=".gitattributes" --exclude=".gitignore" --exclude=".archive.cmd" --exclude="whisper-standalone-win-binaries.zip" *
