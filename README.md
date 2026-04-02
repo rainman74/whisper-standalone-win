@@ -1,4 +1,4 @@
-<img width="1608" height="773" alt="image" src="https://github.com/user-attachments/assets/d8e9f18f-04b1-49a1-a13b-3bebb2b423a2" />
+<img width="1596" height="773" alt="image" src="https://github.com/user-attachments/assets/53384815-faa3-4e4c-9a5f-e703c405c2e5" />
 
 [Standalone executables](https://github.com/Purfview/whisper-standalone-win/releases) of [OpenAI's Whisper](https://github.com/openai/whisper) & [Faster-Whisper](https://github.com/guillaumekln/faster-whisper) for those who don't want to bother with Python.
 
