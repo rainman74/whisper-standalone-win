@@ -3,4 +3,5 @@ _models/
 cu*.dll
 torch_*.dll
 onnxruntime_providers_cuda.dll
-whisper-standalone-win-binaries.zip
+whisper-standalone-win.zip
+whisper-nvidia-dll.zip
