@@ -1,0 +1,9 @@
+# Ensure shell scripts keep Unix line endings to preserve shebang execution on Linux/Synology.
+*.sh text eol=lf 
+# Force Windows-specific batch files to use CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+# Python scripts (LF is recommended for cross-platform compatibility)
+*.py text eol=lf
+# Default behavior for all other text files (auto-detection)
+* text=auto
