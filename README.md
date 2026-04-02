@@ -1,6 +1,4 @@
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate?hosted_button_id=JF5BEQE3YQGH2)  [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/purfview) 
-
-![alt text](https://i.imgur.com/DYVm3u6.png)
+<img width="1608" height="876" alt="image" src="https://github.com/user-attachments/assets/52252907-ecbf-4d9d-871c-a92f2947bd43" />
 
 [Standalone executables](https://github.com/Purfview/whisper-standalone-win/releases) of [OpenAI's Whisper](https://github.com/openai/whisper) & [Faster-Whisper](https://github.com/guillaumekln/faster-whisper) for those who don't want to bother with Python.
 
