@@ -1,5 +1,16 @@
-@echo off
+@echo off & setlocal enabledelayedexpansion
 
-tar -a -c -f whisper-standalone-win.zip --exclude="_models" --exclude=".git" --exclude=".gitattributes" --exclude=".gitignore" --exclude=".archive.cmd" --exclude="whisper-standalone-win.zip" --exclude="whisper-nvidia-dll.zip" --exclude="cu*.dll" --exclude="nv*.dll" *
+:INIT
+set ZIP_BASE=whisper-standalone-win.zip
+set ZIP_NV=whisper-nvidia-dll.zip
 
-tar -a -c -f whisper-nvidia-dll.zip _xxl_data\torch\lib\cu*.dll _xxl_data\torch\lib\nv*.dll
+:MAIN
+echo Erstelle Basispaket (ohne NVIDIA DLLs)...
+tar -a -c -f %ZIP_BASE% --exclude="_models" --exclude=".git" --exclude=".gitattributes" --exclude=".gitignore" --exclude=".archive.cmd" --exclude="%ZIP_BASE%" --exclude="%ZIP_NV%" --exclude="cu*.dll" --exclude="nv*.dll" *
+
+echo Erstelle NVIDIA Paket (nur DLLs)...
+tar -a -c -f %ZIP_NV% _xxl_data\torch\lib\cu*.dll _xxl_data\torch\lib\nv*.dll
+
+echo Fertig!
+
+:END
