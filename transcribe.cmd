@@ -266,9 +266,11 @@ echo   1    Minimal coherence              Very fast
 echo   2    Consistent names and address   Fast
 echo   3    Good compromise                Moderate     ^<-- Default
 echo   5    Very consistent style          Slow
+echo   A    Full entity tracking (10)      Slowest
 echo.
-choice /c 012345E /n /m "  Context blocks [0-5, E = Abort]: "
-if errorlevel 7 (set "CTX=E"  & exit /b)
+choice /c 012345AE /n /m "  Context blocks [0-5, A = 10, E = Abort]: "
+if errorlevel 8 (set "CTX=E"  & exit /b)
+if errorlevel 7 (set "CTX=10" & exit /b)
 if errorlevel 6 (set "CTX=5"  & exit /b)
 if errorlevel 5 (set "CTX=4"  & exit /b)
 if errorlevel 4 (set "CTX=3"  & exit /b)

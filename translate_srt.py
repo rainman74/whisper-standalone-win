@@ -99,35 +99,109 @@ def get_gap(ts_prev, ts_next):
 def similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
-def translate_text(text, context_blocks=None, ctx=3, force_variety=False):
+def _has_untranslated(source, result):
+    """True if result likely contains untranslated words from the English source.
+    Proper nouns (capitalized after sentence-internal punctuation) are excluded."""
+    if not source or not result:
+        return False
+    proper = {m.group().lower()
+              for m in re.finditer(r'(?<=[,;.!?] )[A-Z][a-z]{2,}', source)}
+    src = {w.lower() for w in re.findall(r'[a-zA-Z]{5,}', source)} - proper
+    res = {w.lower() for w in re.findall(r'[a-zA-Z]{5,}', result)}
+    return bool(src & res)
+
+def _detect_register(context_blocks, ctx):
+    """Returns 'Sie', 'du', or None if register is unclear."""
+    if not context_blocks:
+        return None
+    sie = 0
+    du  = 0
+    for _, de in context_blocks[-max(ctx, 5):]:
+        sie += len(re.findall(r'\bSie\b', de))
+        du  += len(re.findall(r'\b[Dd]u\b|\b[Dd]ich\b|\b[Dd]ir\b', de))
+    if sie + du < 2:
+        return None
+    if sie > du * 1.5:
+        return 'Sie'
+    if du > sie * 1.5:
+        return 'du'
+    return None
+
+ANALYSIS_CTX_MAX = 10  # max entity-tracking window (capped by ctx)
+
+def _translate_minimal(text):
+    """Aggressive fallback: minimal prompt when full prompt fails to translate."""
+    prompt = f"[INST] Translate this English text to German. Output ONLY the German translation:\n{text} [/INST]"
+    try:
+        response = requests.post(f"{OLLAMA_API}/api/generate", json={
+            "model": MODEL, "prompt": prompt, "stream": False,
+            "options": {"temperature": 0.3, "num_predict": 256,
+                        "num_ctx": 4096, "num_gpu": 99}
+        }, timeout=60)
+        result = response.json().get('response', '').strip()
+        result = result.replace('"', '').replace('\u201e', '').replace('\u201c', '').strip()
+        return result if result else None
+    except:
+        return None
+
+def translate_text(text, context_blocks=None, ctx=3, force_variety=False, _allow_retry=True):
     if not text.strip():
         return text
 
-    # Build context from last ctx EN+DE pairs
+    # Analysis context: last N DE segments for entity/gender tracking (capped by ctx)
+    analysis_ctx = min(ctx, ANALYSIS_CTX_MAX)
+    analysis_str = ""
+    if context_blocks and analysis_ctx > 0:
+        for _, de in context_blocks[-analysis_ctx:]:
+            analysis_str += f"  {de}\n"
+
+    # Translation context: last 3 EN+DE pairs for style matching
+    style_ctx = min(ctx, 10)
     context_str = ""
-    if context_blocks and ctx > 0:
-        for en, de in context_blocks[-ctx:]:
-            context_str += f"  {en} → {de}\n"
+    if context_blocks and style_ctx > 0:
+        for en, de in context_blocks[-style_ctx:]:
+            context_str += f"  EN: {en}\n  DE: {de}\n"
+
+    # Inject register rule when dominant form is clear
+    register = _detect_register(context_blocks, ctx)
+    if register == 'Sie':
+        register_rule = "9. Use the formal 'Sie' address form throughout.\n"
+    elif register == 'du':
+        register_rule = "9. Use the informal 'du' address form throughout.\n"
+    else:
+        register_rule = ""
+
+    # Only include context sections when context exists
+    if context_blocks:
+        context_header = (
+            f"Entity reference (last {analysis_ctx} segments):\n{analysis_str}\n"
+            f"Recent translations:\n{context_str}\n"
+        )
+    else:
+        context_header = ""
 
     prompt = (
-        f"[INST] Role: Professional Subtitle Translator\n"
-        f"Previous translations:\n{context_str}"
+        f"[INST] Role: Professional Subtitle Translator\n\n"
+        f"{context_header}"
         f"Translate to German: {text}\n\n"
         f"Rules:\n"
-        f"1. Use sophisticated, valid German vocabulary.\n"
-        f"2. Match the style and register of the previous translations.\n"
-        f"3. NO notes, NO quotes, NO explanations.\n"
-        f"4. Output ONLY the German translation for the 'Target'.\n"
-        f"5. If Target is a fragment, do not complete it unless grammar requires it.\n"
-        f"6. Be semantically precise and translate ALL information of the 'Target'.\n"
-        f"7. Strictly NO explanations. Output ONLY German text. [/INST]"
+        f"1. Use natural German syntax (Verbzweitstellung, Satzklammer) — never adopt source-language structure.\n"
+        f"2. Treat each segment as part of a chain — track subject gender, number, and status from prior context. Never translate in isolation.\n"
+        f"3. Determine noun gender first. Align ALL dependent forms (articles, pronouns, adjectives) in correct gender, case (Nom/Gen/Dat/Akk), and number. Never mix genders within a reference chain.\n"
+        f"4. Check logical consistency: speaker POV, temporal sequence, and factual references must be coherent across segments.\n"
+        f"5. Transfer idioms and metaphors to natural German equivalents — never translate figurative language literally.\n"
+        f"6. No anglicisms when German equivalents exist. No domain-specific jargon for everyday expressions. Use period-appropriate vocabulary.\n"
+        f"7. Translate EVERY word to German — no English word may remain. This includes interjections, honorifics, and standalone words before punctuation.\n"
+        f"8. Vary phrasing — avoid mechanical repetitions from source structure. Fragments stay fragments. Keep concise.\n"
+        f"{register_rule}"
+        f"Output ONLY the German translation. NEVER add parenthesized hints, notes, analysis, checklists, reasoning, or meta-commentary. [/INST]"
     )
     payload = {
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
         "options": {
-            "think": False,
+            "think": True,
             "num_ctx": 4096,
             "num_gpu": 99,
             "temperature": 0.1 if force_variety else 0.0,
@@ -141,6 +215,56 @@ def translate_text(text, context_blocks=None, ctx=3, force_variety=False):
         response = requests.post(f"{OLLAMA_API}/api/generate", json=payload, timeout=60)
         result = response.json().get('response', '').strip()
         result = result.replace('"', '').replace('\u201e', '').replace('\u201c', '').strip()
+        # Strip all parenthesized content FIRST (subtitles are speech, never contain parentheses)
+        if result:
+            result = re.sub(r'\s*\([^)]*\)', '', result).strip()
+            result = result.replace('(', '').replace(')', '').strip()
+        # Truncate if result is excessively long (model dumped analysis)
+        if result and len(result) > len(text) * 3:
+            result = result.split('\n')[0].strip()
+        # Remove "English → German" leakage (model mimics context format)
+        if ' → ' in result:
+            result = result.split(' → ')[-1].strip()
+        # Remove "Target: ... Translation: German" leakage
+        m = re.search(r'(?i)translation\s*:\s*(.+)', result, re.DOTALL)
+        if m:
+            result = m.group(1).strip()
+        # Preserve trailing punctuation from source
+        src = text.strip()
+        if src and result:
+            if src.endswith('...') or src.endswith('…'):
+                if not result.endswith(('...', '…')):
+                    result = result.rstrip('.…') + '…'
+            elif src[-1] in '.!?':
+                if result[-1] not in '.!?…':
+                    result += src[-1]
+        # Deduplicate repeated sentences within result
+        if result:
+            sentences = re.split(r'(?<=[.!?])\s+', result)
+            if len(sentences) >= 2:
+                seen = [sentences[0]]
+                for s in sentences[1:]:
+                    if all(similarity(s, prev) < 0.7 for prev in seen):
+                        seen.append(s)
+                result = ' '.join(seen)
+        # Collapse double punctuation (but preserve ... ellipsis)
+        result = re.sub(r'\.{2}(?!\.)', '.', result)
+        result = result.strip()
+        # Retry if result contains untranslated words or is too similar to source
+        needs_retry = (
+            _has_untranslated(text, result)
+            or similarity(text.strip(), result.strip()) > 0.7
+        )
+        if _allow_retry and result and needs_retry:
+            retry = translate_text(text, context_blocks, ctx,
+                                   force_variety=True, _allow_retry=False)
+            if retry and similarity(text.strip(), retry.strip()) <= 0.7:
+                result = retry
+            else:
+                # Aggressive fallback: minimal prompt without complex rules
+                minimal = _translate_minimal(text)
+                if minimal and similarity(text.strip(), minimal.strip()) <= 0.7:
+                    result = minimal
         # Fallback to original text if model returned nothing
         return result if result else text
     except Exception as e:
@@ -184,6 +308,8 @@ def write_srt(path, header, translated_blocks):
             ts_line = ts.strip().splitlines()[-1]
             f.write(f"{i}\n{ts_line}\n{wrapped_text}\n\n")
 
+FLUSH_EVERY = 20   # write progress to disk every N translated blocks
+
 def process_srt(input_file, output_file, ctx=3):
     start_timer = time.time()
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -197,6 +323,7 @@ def process_srt(input_file, output_file, ctx=3):
     translated_blocks = []
     context_blocks = []
     skip_next = False
+    last_flush = 0
     try:
         for i in range(total_blocks):
             print(f"\r{i+1} of {total_blocks} subtitles translated", end="", flush=True)
@@ -216,20 +343,26 @@ def process_srt(input_file, output_file, ctx=3):
                     context_blocks.append((current_en, part1))
                     context_blocks.append((next_en, part2))
                     skip_next = True
+                    # Incremental flush
+                    if len(translated_blocks) - last_flush >= FLUSH_EVERY:
+                        write_srt(output_file, header, translated_blocks)
+                        last_flush = len(translated_blocks)
                     continue
             translation = translate_text(current_en, context_blocks, ctx)
             if translated_blocks and similarity(translation, translated_blocks[-1][1]) > 0.8:
                 translation = translate_text(current_en, context_blocks, ctx, force_variety=True)
             translated_blocks.append((blocks[i]["timestamp"], translation))
             context_blocks.append((current_en, translation))
+            # Incremental flush
+            if len(translated_blocks) - last_flush >= FLUSH_EVERY:
+                write_srt(output_file, header, translated_blocks)
+                last_flush = len(translated_blocks)
 
     except KeyboardInterrupt:
         print(f"\n\n  [CANCELLED] {len(translated_blocks)} of {total_blocks} subtitles translated.", flush=True)
         if translated_blocks:
-            base, ext = os.path.splitext(output_file)
-            partial_file = f"{base}.partial{ext}"
-            write_srt(partial_file, header, translated_blocks)
-            print(f"  Partial translation saved to:\n  {partial_file}", flush=True)
+            write_srt(output_file, header, translated_blocks)
+            print(f"  Partial translation saved to:\n  {output_file}", flush=True)
         else:
             print("  Nothing to save.", flush=True)
         cleanup_wavs(input_file)
