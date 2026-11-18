@@ -733,8 +733,9 @@ exit /b
 
 :PYTHON_MISSING
 echo.
-echo [FAST-WHISPER] No working Python 3.x found.
-echo [FAST-WHISPER] Please install Python 3.x first: https://www.python.org/downloads/
+echo [FAST-WHISPER] No working Python 3.7+ found.
+echo [FAST-WHISPER] translate_srt.py requires Python 3.7 or newer (3.10+ recommended).
+echo [FAST-WHISPER] Please install Python: https://www.python.org/downloads/
 echo [FAST-WHISPER] During setup enable "Add python.exe to PATH", then run again.
 echo.
 exit /b 1
