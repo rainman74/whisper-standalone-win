@@ -100,6 +100,7 @@ def stop_ollama():
 def setup_ollama():
     # Always restart so OLLAMA_FLASH_ATTENTION and OLLAMA_KV_CACHE_TYPE
     # (set by whisper.cmd) are inherited by the server process.
+    print(flush=True)
     if _server_running():
         print("[FAST-WHISPER] Restarting Ollama to apply GPU memory settings ...", flush=True)
         stop_ollama()
@@ -455,7 +456,8 @@ def process_batch(job_file, ctx=3):
         return
     for idx, (src, dst, target) in enumerate(jobs, 1):
         TARGET_LANG = target
-        print(f"\n[FAST-WHISPER] Translating ({idx} of {total}): {os.path.basename(src)}", flush=True)
+        prefix = "" if idx == 1 else "\n"
+        print(f"{prefix}[FAST-WHISPER] Translating ({idx} of {total}): {os.path.basename(src)}", flush=True)
         if not os.path.exists(src):
             print(f"[FAST-WHISPER] Source subtitle missing: {os.path.basename(src)}", flush=True)
             continue
@@ -465,9 +467,9 @@ def process_batch(job_file, ctx=3):
             print(f"[FAST-WHISPER] Translation failed: {e}", flush=True)
             continue
         if os.path.exists(dst):
-            print(f"\n[FAST-WHISPER] Translation created: {os.path.basename(dst)}", flush=True)
+            print(f"\n\n[FAST-WHISPER] Translation created: {os.path.basename(dst)}", flush=True)
         else:
-            print(f"\n[FAST-WHISPER] Translation failed - no output written: {os.path.basename(dst)}", flush=True)
+            print(f"\n\n[FAST-WHISPER] Translation failed - no output written: {os.path.basename(dst)}", flush=True)
     end_timer = time.time()
     duration = end_timer - start_timer
     hours, rem = divmod(duration, 3600)
