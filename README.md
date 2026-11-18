@@ -23,8 +23,8 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 **Modes:**
 - `[1]` Auto transcription (language auto-detect)
 - `[2]` Auto transcription + speaker diarization
-- `[3]` German transcription (language forced)
-- `[4]` English transcription (language forced)
+- `[3]` German transcription (language forced) → `<name>.DE.srt`
+- `[4]` English transcription (language forced) → `<name>.EN.srt`
 - `[5]` Two-stage translation: Whisper → EN SRT, then Ollama/mistral-nemo → DE SRT (context option B uses translategemma:12b)
 - `[6]` Vocal/background separation — outputs clean background WAV
 

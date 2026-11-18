@@ -21,6 +21,10 @@ set "DP=%~dp0"
 :: Default translation model (context option B switches to translategemma:12b)
 set "MODEL=mistral-nemo"
 
+:: Subtitle suffix of the selected mode (mode 3 = .DE.srt, mode 4 = .EN.srt)
+set "OUTSUFFIX=.srt"
+set "WORKLIST_EMPTY="
+
 :: Save extension of first file BEFORE shift consumes the args
 set "_ext=%~x1"
 
@@ -83,11 +87,13 @@ if errorlevel 1 goto MODE_AUTO
 :MODE_AUTO
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
+if defined WORKLIST_EMPTY goto END
 echo.
 echo [FAST-WHISPER] Starting transcription (language auto-detect) ...
 echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list!
 if errorlevel 1 goto TRANSCRIBE_FAIL
+call :RENAME_OUTPUT
 call :CHECK_OUTPUT
 goto CLEANUP_JSON
 
@@ -97,11 +103,13 @@ goto CLEANUP_JSON
 :MODE_DIARIZE
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
+if defined WORKLIST_EMPTY goto END
 echo.
 echo [FAST-WHISPER] Starting transcription with speaker recognition ...
 echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --diarize pyannote_v3.1 --diarize_device cuda
 if errorlevel 1 goto TRANSCRIBE_FAIL
+call :RENAME_OUTPUT
 call :CHECK_OUTPUT
 goto CLEANUP_JSON
 
@@ -109,13 +117,16 @@ goto CLEANUP_JSON
 ::  [3] GERMAN
 :: ============================================================
 :MODE_DE
+set "OUTSUFFIX=.DE.srt"
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
+if defined WORKLIST_EMPTY goto END
 echo.
 echo [FAST-WHISPER] Starting transcription in German ...
 echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language de
 if errorlevel 1 goto TRANSCRIBE_FAIL
+call :RENAME_OUTPUT
 call :CHECK_OUTPUT
 goto CLEANUP_JSON
 
@@ -123,13 +134,16 @@ goto CLEANUP_JSON
 ::  [4] ENGLISH
 :: ============================================================
 :MODE_EN
+set "OUTSUFFIX=.EN.srt"
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
+if defined WORKLIST_EMPTY goto END
 echo.
 echo [FAST-WHISPER] Starting transcription in English ...
 echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language en
 if errorlevel 1 goto TRANSCRIBE_FAIL
+call :RENAME_OUTPUT
 call :CHECK_OUTPUT
 goto CLEANUP_JSON
 
@@ -336,8 +350,8 @@ for %%F in ("!bf!") do (
     set "bfp=%%~dpF"
     set "bfn=%%~nF"
 )
-if exist "!bfp!!bfn!.srt" (
-    echo [FAST-WHISPER] Subtitle already exists: !bfn!.srt
+if exist "!bfp!!bfn!!OUTSUFFIX!" (
+    echo [FAST-WHISPER] Subtitle already exists: !bfn!!OUTSUFFIX!
     set /a skip_count+=1
     goto WORKLIST_LOOP
 )
@@ -351,9 +365,30 @@ if !todo_count!==0 (
     echo.
     echo [FAST-WHISPER] Nothing to do - all dropped files already have a subtitle.
     echo.
-    goto END
+    set "WORKLIST_EMPTY=1"
+    exit /b
 )
 exit /b
+
+:: ============================================================
+::  Subroutine: rename the subtitle to the mode-specific suffix
+:: ============================================================
+:RENAME_OUTPUT
+if "!IS_DIR!"=="1" exit /b
+if /i "!OUTSUFFIX!"==".srt" exit /b
+set "ri=0"
+:RENAME_OUTPUT_LOOP
+set /a ri+=1
+if !ri! gtr !todo_count! exit /b
+set "rf=!todo[%ri%]!"
+set "rfp="
+set "rfn="
+for %%F in ("!rf!") do (
+    set "rfp=%%~dpF"
+    set "rfn=%%~nF"
+)
+if exist "!rfp!!rfn!.srt" move /y "!rfp!!rfn!.srt" "!rfp!!rfn!!OUTSUFFIX!" >nul
+goto RENAME_OUTPUT_LOOP
 
 :: ============================================================
 ::  Subroutine: verify that a subtitle was written for every file
@@ -371,7 +406,7 @@ for %%F in ("!cf!") do (
     set "cfp=%%~dpF"
     set "cfn=%%~nF"
 )
-if not exist "!cfp!!cfn!.srt" echo  [ERROR] No subtitle written: !cfn!.srt
+if not exist "!cfp!!cfn!!OUTSUFFIX!" echo [FAST-WHISPER] No subtitle written: !cfn!!OUTSUFFIX!
 goto CHECK_OUTPUT_LOOP
 
 :: ============================================================
@@ -422,7 +457,7 @@ if errorlevel 1 (
     )
     echo [FAST-WHISPER] Installing Ollama ...
     start /wait "" "%temp%\OllamaSetup.exe" /silent
-    if errorlevel 1 echo  [WARNING] Ollama installer returned an error.
+    if errorlevel 1 echo [FAST-WHISPER] Ollama installer returned an error.
     set "PATH=!PATH!;!LOCALAPPDATA!\Programs\Ollama"
     timeout /t 3 >nul
     where ollama >nul 2>nul

@@ -120,7 +120,7 @@ if errorlevel 1 (
     )
     echo [FAST-WHISPER] Installing Ollama ...
     start /wait "" "%temp%\OllamaSetup.exe" /silent
-    if errorlevel 1 echo  [WARNING] Ollama installer returned an error.
+    if errorlevel 1 echo [FAST-WHISPER] Ollama installer returned an error.
     set "PATH=!PATH!;!LOCALAPPDATA!\Programs\Ollama"
     timeout /t 3 >nul
     where ollama >nul 2>nul
