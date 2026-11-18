@@ -1,5 +1,10 @@
-*.bin
-_models/
+# GUI binary and its settings are not part of the repository
+faster-whisper-xxl-gui.exe
+settings.json
+
+# Model binaries under _models are never versioned (any depth)
+_models/**/*.bin
+
 cu*.dll
 torch_*.dll
 onnxruntime_providers_cuda.dll
@@ -11,6 +16,3 @@ whisper-nvidia-dll.zip
 *.srt
 *.json
 *.mp4
-# Bundled model assets: everything under this folder is versioned (unlike *.bin in _models)
-!_xxl_data/faster_whisper/assets/
-!_xxl_data/faster_whisper/assets/**
