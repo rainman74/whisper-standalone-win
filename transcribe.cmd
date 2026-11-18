@@ -53,6 +53,7 @@ if /i "%_ext%"==".srt" goto MODE_SRT_TRANSLATE
 :: ============================================================
 ::  Banner + Menu
 :: ============================================================
+:MAIN_MENU
 cls
 echo.
 echo      8""""                                    8   8  8                                       8   8 8   8 8
@@ -201,6 +202,7 @@ goto MODE_TRANSLATE
 :: ============================================================
 :MODE_TRANSLATE
 call :ASK_CONTEXT
+if /i "!CTX!"=="R" goto MAIN_MENU
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
 echo [FAST-WHISPER] Checking Ollama ...
@@ -323,6 +325,7 @@ goto BACKGROUND_LOOP
 :: ============================================================
 :MODE_SRT_TRANSLATE
 call :ASK_CONTEXT
+if /i "!CTX!"=="R" goto MAIN_MENU
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
 echo [FAST-WHISPER] Checking Ollama ...
@@ -463,10 +466,11 @@ echo   0    No context                     Fastest
 echo   3    Good compromise                Moderate
 echo   A    Full entity tracking (Mistral) Slowest
 echo   B    Full entity tracking (Gemma)   Best
+echo   R    Return to first menu
 echo.
 :CTX_INPUT
 set "CTX_KEY="
-set /p "CTX_KEY=  Context blocks [0, 3, A = 10, B = 10, E = Abort, Enter = B]: "
+set /p "CTX_KEY=  Context blocks [0, 3, A = 10, B = 10, E = Abort, R = Return, Enter = B]: "
 if not defined CTX_KEY set "CTX_KEY=B"
 if defined CTX_KEY set "CTX_KEY=!CTX_KEY: =!"
 if /i "!CTX_KEY!"=="0" (set "CTX=0"  & exit /b)
@@ -474,7 +478,8 @@ if /i "!CTX_KEY!"=="3" (set "CTX=3"  & exit /b)
 if /i "!CTX_KEY!"=="A" (set "CTX=10" & exit /b)
 if /i "!CTX_KEY!"=="B" (set "CTX=10" & set "MODEL=translategemma:12b" & exit /b)
 if /i "!CTX_KEY!"=="E" (set "CTX=E"  & exit /b)
-echo   Invalid choice - please enter 0, 3, A, B or E. Press Enter for B.
+if /i "!CTX_KEY!"=="R" (set "CTX=R"  & exit /b)
+echo   Invalid choice - please enter 0, 3, A, B, E or R. Press Enter for B.
 goto CTX_INPUT
 
 :: ============================================================
