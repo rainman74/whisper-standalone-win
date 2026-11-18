@@ -24,6 +24,8 @@ set "MODEL=mistral-nemo"
 :: Subtitle suffix of the selected mode (mode 3 = .DE.srt, mode 4 = .EN.srt)
 set "OUTSUFFIX=.srt"
 set "WORKLIST_EMPTY="
+set "ERRLOG=%TEMP%\faster-whisper-stderr.log"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 
 :: Save extension of first file BEFORE shift consumes the args
 set "_ext=%~x1"
@@ -86,7 +88,8 @@ echo   [5]  Translate GERMAN         (Whisper DE, Ollama to EN)
 echo   [6]  Translate ENGLISH        (Whisper EN, Ollama to DE)
 echo   [7]  Background Extraction    (remove vocals)
 echo.
-choice /c 1234567E /n /m "  Select [1-7, E = Abort]: "
+choice /c 1234567E /n /m "  Select [1-7, E = Exit]: "
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 
 if errorlevel 8 goto END
 if errorlevel 7 goto MODE_BACKGROUND
@@ -107,8 +110,11 @@ if defined WORKLIST_EMPTY goto END
 echo.
 echo [FAST-WHISPER] Starting transcription (language auto-detect) ...
 echo.
-"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list!
+"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! 2>>"!ERRLOG!"
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 goto TRANSCRIBE_FAIL
+if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 call :RENAME_OUTPUT
 call :CHECK_OUTPUT
 goto CLEANUP_JSON
@@ -123,8 +129,11 @@ if defined WORKLIST_EMPTY goto END
 echo.
 echo [FAST-WHISPER] Starting transcription with speaker recognition ...
 echo.
-"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --diarize pyannote_v3.1 --diarize_device cuda
+"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --diarize pyannote_v3.1 --diarize_device cuda 2>>"!ERRLOG!"
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 goto TRANSCRIBE_FAIL
+if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 call :RENAME_OUTPUT
 call :CHECK_OUTPUT
 goto CLEANUP_JSON
@@ -140,8 +149,11 @@ if defined WORKLIST_EMPTY goto END
 echo.
 echo [FAST-WHISPER] Starting transcription in German ...
 echo.
-"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language de
+"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language de 2>>"!ERRLOG!"
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 goto TRANSCRIBE_FAIL
+if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 call :RENAME_OUTPUT
 call :CHECK_OUTPUT
 goto CLEANUP_JSON
@@ -157,8 +169,11 @@ if defined WORKLIST_EMPTY goto END
 echo.
 echo [FAST-WHISPER] Starting transcription in English ...
 echo.
-"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language en
+"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language en 2>>"!ERRLOG!"
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 goto TRANSCRIBE_FAIL
+if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 call :RENAME_OUTPUT
 call :CHECK_OUTPUT
 goto CLEANUP_JSON
@@ -170,6 +185,8 @@ goto CLEANUP_JSON
 set "fail_code=!errorlevel!"
 echo.
 echo [FAST-WHISPER] Transcription failed - exit code !fail_code!
+if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 echo.
 goto CLEANUP_JSON
 
@@ -202,6 +219,7 @@ goto MODE_TRANSLATE
 :: ============================================================
 :MODE_TRANSLATE
 call :ASK_CONTEXT
+if /i "!CTX!"=="C" goto CANCELLED_BY_USER
 if /i "!CTX!"=="R" goto MAIN_MENU
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
@@ -227,11 +245,16 @@ echo.
 echo [FAST-WHISPER] Processing: !src_name!
 echo.
 
-"%DP%faster-whisper-xxl.exe" !TRANSLATE_FLAGS! "!src!"
+"%DP%faster-whisper-xxl.exe" !TRANSLATE_FLAGS! "!src!" 2>>"!ERRLOG!"
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 (
     echo [FAST-WHISPER] Whisper transcription failed - exit code !errorlevel!
+    if exist "!ERRLOG!" type "!ERRLOG!"
+    if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
     goto TRANSLATE_NEXT
 )
+if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 
 if not exist "!src_path!!src_name!.srt" (
     echo [FAST-WHISPER] No subtitle produced: !src_name!.srt
@@ -244,6 +267,7 @@ echo.
 echo [FAST-WHISPER] Starting translation via Ollama (!TRANSLATE_SRC_NAME! to !TRANSLATE_TRG_NAME!) ...
 echo.
 python "%DP%translate_srt.py" "!src_path!!src_name!!TRANSLATE_SRC_SUFFIX!" "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" !CTX! "!MODEL!" !TRANSLATE_TARGET!
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 (
     echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
     goto TRANSLATE_NEXT
@@ -289,12 +313,18 @@ echo [FAST-WHISPER] Processing: !src_name!
 echo.
 
 ffmpeg -y -v error -stats -i "!src!" -vn -ac 2 -ar 44100 "!src_path!!src_name!.original.wav"
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 echo.
-"%DP%faster-whisper-xxl.exe" !BG_FLAGS! "!src!"
+"%DP%faster-whisper-xxl.exe" !BG_FLAGS! "!src!" 2>>"!ERRLOG!"
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 (
     echo [FAST-WHISPER] Audio separation failed - exit code !errorlevel!
+    if exist "!ERRLOG!" type "!ERRLOG!"
+    if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
     goto BACKGROUND_NEXT
 )
+if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 
 set "VOX_FILE=!src_path!!src_fullname!_mdx1.wav"
 
@@ -306,6 +336,7 @@ if not exist "!VOX_FILE!" (
 echo.
 echo [FAST-WHISPER] Running final vocal elimination ...
 ffmpeg -y -v error -stats -i "!src_path!!src_name!.original.wav" -i "!VOX_FILE!" -filter_complex "[1:a]volume=15,bandpass=f=1500:width_type=h:w=3000[sc];[0:a][sc]sidechaincompress=threshold=0.007:ratio=20:attack=2:release=450:knee=1" -c:a pcm_s16le "!src_path!!src_name!.background.wav"
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 (
     echo [FAST-WHISPER] Background extraction failed - exit code !errorlevel!
     goto BACKGROUND_NEXT
@@ -325,6 +356,7 @@ goto BACKGROUND_LOOP
 :: ============================================================
 :MODE_SRT_TRANSLATE
 call :ASK_CONTEXT
+if /i "!CTX!"=="C" goto CANCELLED_BY_USER
 if /i "!CTX!"=="R" goto MAIN_MENU
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
@@ -466,11 +498,11 @@ echo   0    No context                     Fastest
 echo   3    Good compromise                Moderate
 echo   A    Full entity tracking (Mistral) Slowest
 echo   B    Full entity tracking (Gemma)   Best
-echo   R    Return to first menu
 echo.
 :CTX_INPUT
 set "CTX_KEY="
-set /p "CTX_KEY=  Context blocks [0, 3, A = 10, B = 10, E = Abort, R = Return, Enter = B]: "
+set /p "CTX_KEY=  Context blocks [0, 3, A = 10, B = 10, E = Exit, R = Return, Enter = B]: "
+if "%errorlevel%"=="-1073741510" (set "CTX=C" & exit /b)
 if not defined CTX_KEY set "CTX_KEY=B"
 if defined CTX_KEY set "CTX_KEY=!CTX_KEY: =!"
 if /i "!CTX_KEY!"=="0" (set "CTX=0"  & exit /b)
@@ -555,7 +587,7 @@ for %%J in ("!cpath!!cname!*.json") do if exist "%%J" del "%%J" >nul 2>&1
 goto CLEANUP_JSON_LOOP
 
 :: ============================================================
-::  Abort with optional WAV cleanup
+::  Exit with optional WAV cleanup
 :: ============================================================
 :CLEANUP_EXIT
 set "ci=0"
@@ -571,6 +603,15 @@ set "cname_clean=!cname!"
 if /i "!cname:~-3!"==".EN" set "cname_clean=!cname:~0,-3!"
 for %%W in ("!cpath!!cname_clean!*.wav") do if exist "%%W" del "%%W" >nul 2>&1
 goto CLEANUP_EXIT_LOOP
+
+:: ============================================================
+::  Cancelled by user
+:: ============================================================
+:CANCELLED_BY_USER
+echo.
+echo [FAST-WHISPER] Cancelled by user.
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
+goto END
 
 :: ============================================================
 ::  End

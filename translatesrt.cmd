@@ -41,7 +41,7 @@ echo   B    Full entity tracking (Gemma)   Best
 echo.
 :CTX_INPUT
 set "CTX_KEY="
-set /p "CTX_KEY=  Context blocks [0, 3, A = 10, B = 10, E = Abort, Enter = B]: "
+set /p "CTX_KEY=  Context blocks [0, 3, A = 10, B = 10, E = Exit, Enter = B]: "
 if not defined CTX_KEY set "CTX_KEY=B"
 if defined CTX_KEY set "CTX_KEY=!CTX_KEY: =!"
 if /i "!CTX_KEY!"=="0" (set "CTX=0"  & goto CTX_DONE)
