@@ -1,5 +1,7 @@
 faster-whisper-xxl-gui.exe
 settings.json
+ytdlp_updates.json
+
 .___CLAUDE___.cmd
 .___PUSH___.cmd
 *.wav
