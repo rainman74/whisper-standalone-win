@@ -49,21 +49,6 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 
 ---
 
-## translatesrt.cmd
-
-Standalone SRT translator — English↔German via Ollama, fully local. Uses mistral-nemo by default or translategemma:12b with context option B.
-
-**Features:**
-- Drop one or more SRT files for batch processing — all files are translated in one batch (Ollama model loaded once)
-- No cloud, no API key required
-- Direction is chosen per file: `.EN.srt` → German, `.DE.srt` → English, plain `.srt` → German; files can be mixed in one drop
-- Selectable context block count (0, 3, `A` = 10 with mistral-nemo, `B` = 10 with `translategemma:12b`): controls translation coherence vs. speed; pressing Enter selects B; `R` returns to the main menu; `E` exits
-- Output naming: `video.EN.srt` → `video.DE.srt`, `video.DE.srt` → `video.EN.srt`, `video.srt` → `video.DE.srt`; existing targets are skipped (a plain `video.srt` also counts as the existing English version)
-- All files of one invocation are translated in a single Ollama batch (model loaded once); duplicate target names are translated only once
-- Ollama is installed automatically if missing; the models must be pulled once (`ollama pull mistral-nemo`, `ollama pull translategemma:12b` for option B)
-
----
-
 ## Usage examples
 
 ### Basic
@@ -108,8 +93,7 @@ faster-whisper-xxl.exe "D:\VideoFolder" -l en -m large-v2 -o source --standard -
 ```
 transcribe.cmd "D:\Video.mkv"
 transcribe.cmd "D:\Video.EN.srt"
-translatesrt.cmd "D:\Video.EN.srt"
-translatesrt.cmd "D:\Sub1.EN.srt" "D:\Sub2.EN.srt" "D:\Sub3.EN.srt"
+transcribe.cmd "D:\Sub1.EN.srt" "D:\Sub2.EN.srt" "D:\Sub3.EN.srt"
 ```
 
 ---
