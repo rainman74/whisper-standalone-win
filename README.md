@@ -45,7 +45,7 @@ Standalone SRT translator — English to German via Ollama, fully local. Uses mi
 - Drop one or more SRT files for batch processing
 - No cloud, no API key required
 - Direction: English→German by default; 	ranscribe.cmd modes 5/6 additionally use German→English (target language is passed as 5th argument)
-- Selectable context block count (0, 3, `A` = 10 with mistral-nemo, `B` = 10 with `translategemma:12b`): controls translation coherence vs. speed
+- Selectable context block count (0, 3, `A` = 10 with mistral-nemo, `B` = 10 with `translategemma:12b`): controls translation coherence vs. speed; pressing Enter selects B
 - Output naming: `video.EN.srt` → `video.DE.srt`, or `video.srt` → `video.DE.srt`
 - Ollama is installed automatically if missing; the models must be pulled once (`ollama pull mistral-nemo`, `ollama pull translategemma:12b` for option B)
 

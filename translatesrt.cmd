@@ -39,12 +39,18 @@ echo   3    Good compromise                Moderate
 echo   A    Full entity tracking (Mistral) Slowest
 echo   B    Full entity tracking (Gemma)   Best
 echo.
-choice /c 03ABE /n /m "  Context blocks [0, 3, A = 10, B = 10, E = Abort]: "
-if errorlevel 5 goto TSRT_END
-if errorlevel 4 (set "CTX=10" & set "MODEL=translategemma:12b" & goto CTX_DONE)
-if errorlevel 3 (set "CTX=10" & goto CTX_DONE)
-if errorlevel 2 (set "CTX=3"  & goto CTX_DONE)
-if errorlevel 1 (set "CTX=0"  & goto CTX_DONE)
+:CTX_INPUT
+set "CTX_KEY="
+set /p "CTX_KEY=  Context blocks [0, 3, A = 10, B = 10, E = Abort, Enter = B]: "
+if not defined CTX_KEY set "CTX_KEY=B"
+if defined CTX_KEY set "CTX_KEY=!CTX_KEY: =!"
+if /i "!CTX_KEY!"=="0" (set "CTX=0"  & goto CTX_DONE)
+if /i "!CTX_KEY!"=="3" (set "CTX=3"  & goto CTX_DONE)
+if /i "!CTX_KEY!"=="A" (set "CTX=10" & goto CTX_DONE)
+if /i "!CTX_KEY!"=="B" (set "CTX=10" & set "MODEL=translategemma:12b" & goto CTX_DONE)
+if /i "!CTX_KEY!"=="E" goto TSRT_END
+echo   Invalid choice - please enter 0, 3, A, B or E. Press Enter for B.
+goto CTX_INPUT
 :CTX_DONE
 
 :: ============================================================
