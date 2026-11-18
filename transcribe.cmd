@@ -72,8 +72,8 @@ echo   [1]  Transcribe AUTO          (language auto-detect)
 echo   [2]  Transcribe AUTO+DIARIZE  (speaker recognition)
 echo   [3]  Transcribe GERMAN        (language forced)
 echo   [4]  Transcribe ENGLISH       (language forced)
-echo   [5]  Translate GERMAN         (Whisper DE -> EN -> DE via Ollama)
-echo   [6]  Translate ENGLISH        (Whisper EN -> DE via Ollama)
+echo   [5]  Translate GERMAN         (Whisper DE to EN, Ollama to DE)
+echo   [6]  Translate ENGLISH        (Whisper EN, Ollama to DE)
 echo   [7]  Background Extraction    (remove vocals)
 echo.
 choice /c 1234567E /n /m "  Select [1-7, E = Abort]: "
