@@ -45,6 +45,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - Any other language suffix (e.g. `.FR.srt`, `.ES.srt`, `.YUE.srt`) is translated to **both** `<name>.DE.srt` and `<name>.EN.srt` — whichever of them is missing
 - A plain `<name>.srt` counts as the English version: dropping `<name>.DE.srt` is skipped when `<name>.srt` or `<name>.EN.srt` already exists
 - Ollama is installed automatically if missing; missing Ollama models are downloaded automatically on the first translation (internet required) — if the download fails, the run aborts with a clear message
+- Missing faster-whisper models (`large-v2` for modes 1–6, `tiny` for mode 7) are downloaded automatically from Hugging Face (`Systran/faster-whisper-*`) on first use; a failed download aborts with a clear message
 - Ollama is restarted with GPU-friendly settings (`OLLAMA_KV_CACHE_TYPE=q4_0`, `OLLAMA_FLASH_ATTENTION=1`) — this stops other running Ollama sessions
 - JSON and intermediate WAV files are removed automatically after each run
 - Multiple files: one Whisper run and one Ollama batch per invocation (no repeated model loading)
