@@ -35,6 +35,7 @@ set "IS_DIR=0"
 pushd "%~1" 2>nul
 if not errorlevel 1 (
     set "IS_DIR=1"
+    set "DIR_PATH=%~1"
     popd
 )
 
@@ -139,46 +140,199 @@ call :CHECK_OUTPUT
 goto CLEANUP_JSON
 
 :: ============================================================
-::  [3] GERMAN
+::  Modes 3/4/5/6: reuse existing DE/EN subtitles where possible
 :: ============================================================
 :MODE_DE
-set "OUTSUFFIX=.DE.srt"
-set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
-call :BUILD_WORKLIST
-if defined WORKLIST_EMPTY goto END
-echo.
-echo [FAST-WHISPER] Starting transcription in German ...
-echo.
-"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language de 2>>"!ERRLOG!"
-if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
-if errorlevel 1 goto TRANSCRIBE_FAIL
-if exist "!ERRLOG!" type "!ERRLOG!"
-if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
-call :RENAME_OUTPUT
-call :CHECK_OUTPUT
-goto CLEANUP_JSON
+set "LANG=de" & set "LANG_NAME=German" & set "OUT_SUFFIX=.DE.srt" & set "OTHER_SUFFIX=.EN.srt" & set "OTHER_LANG=en" & set "OTHER_NAME=English" & set "NEED_BOTH=0"
+goto MODE_SRTCHECK
 
-:: ============================================================
-::  [4] ENGLISH
 :: ============================================================
 :MODE_EN
-set "OUTSUFFIX=.EN.srt"
-set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
-call :BUILD_WORKLIST
-if defined WORKLIST_EMPTY goto END
-echo.
-echo [FAST-WHISPER] Starting transcription in English ...
-echo.
-"%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language en 2>>"!ERRLOG!"
-if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
-if errorlevel 1 goto TRANSCRIBE_FAIL
-if exist "!ERRLOG!" type "!ERRLOG!"
-if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
-call :RENAME_OUTPUT
-call :CHECK_OUTPUT
-goto CLEANUP_JSON
+set "LANG=en" & set "LANG_NAME=English" & set "OUT_SUFFIX=.EN.srt" & set "OTHER_SUFFIX=.DE.srt" & set "OTHER_LANG=de" & set "OTHER_NAME=German" & set "NEED_BOTH=0"
+goto MODE_SRTCHECK
 
 :: ============================================================
+:MODE_TRANSLATE_DE
+set "LANG=de" & set "LANG_NAME=German" & set "OUT_SUFFIX=.DE.srt" & set "OTHER_SUFFIX=.EN.srt" & set "OTHER_LANG=en" & set "OTHER_NAME=English" & set "NEED_BOTH=1"
+goto MODE_SRTCHECK
+
+:: ============================================================
+:MODE_TRANSLATE_EN
+set "LANG=en" & set "LANG_NAME=English" & set "OUT_SUFFIX=.EN.srt" & set "OTHER_SUFFIX=.DE.srt" & set "OTHER_LANG=de" & set "OTHER_NAME=German" & set "NEED_BOTH=1"
+goto MODE_SRTCHECK
+
+:: ============================================================
+:MODE_SRTCHECK
+if "!IS_DIR!"=="1" call :EXPAND_DIR
+if "!IS_DIR!"=="1" if !file_count!==0 (
+    echo.
+    echo [FAST-WHISPER] No supported media files found in the dropped folder.
+    echo.
+    goto END
+)
+set "did_work="
+set "TRANS_READY="
+set "i=0"
+:MODE_SRTCHECK_LOOP
+set /a i+=1
+if !i! gtr !file_count! goto MODE_SRTCHECK_DONE
+
+set "src=!file[%i%]!"
+set "src_path="
+set "src_name="
+for %%F in ("!src!") do (
+    set "src_path=%%~dpF"
+    set "src_name=%%~nF"
+)
+
+set "exist_out=0"
+if exist "!src_path!!src_name!!OUT_SUFFIX!" set "exist_out=1"
+set "exist_other=0"
+if exist "!src_path!!src_name!!OTHER_SUFFIX!" set "exist_other=1"
+
+if "!exist_out!"=="1" if "!exist_other!"=="1" (
+    echo [FAST-WHISPER] Subtitles already exist: !src_name!!OUT_SUFFIX! + !src_name!!OTHER_SUFFIX!
+    goto MODE_SRTCHECK_NEXT
+)
+if "!exist_out!"=="1" if "!NEED_BOTH!"=="0" (
+    echo [FAST-WHISPER] Subtitle already exists: !src_name!!OUT_SUFFIX!
+    goto MODE_SRTCHECK_NEXT
+)
+
+echo.
+echo [FAST-WHISPER] Processing: !src_name!
+echo.
+
+if "!exist_out!"=="1" (
+    set "TR_SRC=!OUT_SUFFIX!"
+    set "TR_DST=!OTHER_SUFFIX!"
+    set "TR_TARGET=!OTHER_LANG!"
+    set "TR_FROM=!LANG_NAME!"
+    set "TR_TO=!OTHER_NAME!"
+    call :MODE_TRANSLATE_ONE
+    if errorlevel 99 goto CANCELLED_BY_USER
+    if errorlevel 98 goto MAIN_MENU
+    if errorlevel 97 goto CLEANUP_EXIT
+    goto MODE_SRTCHECK_NEXT
+)
+if "!exist_other!"=="1" (
+    set "TR_SRC=!OTHER_SUFFIX!"
+    set "TR_DST=!OUT_SUFFIX!"
+    set "TR_TARGET=!LANG!"
+    set "TR_FROM=!OTHER_NAME!"
+    set "TR_TO=!LANG_NAME!"
+    call :MODE_TRANSLATE_ONE
+    if errorlevel 99 goto CANCELLED_BY_USER
+    if errorlevel 98 goto MAIN_MENU
+    if errorlevel 97 goto CLEANUP_EXIT
+    goto MODE_SRTCHECK_NEXT
+)
+
+call :MODE_WHISPER_ONE
+if errorlevel 99 goto CANCELLED_BY_USER
+if errorlevel 1 goto MODE_SRTCHECK_NEXT
+if "!NEED_BOTH!"=="1" (
+    set "TR_SRC=!OUT_SUFFIX!"
+    set "TR_DST=!OTHER_SUFFIX!"
+    set "TR_TARGET=!OTHER_LANG!"
+    set "TR_FROM=!LANG_NAME!"
+    set "TR_TO=!OTHER_NAME!"
+    call :MODE_TRANSLATE_ONE
+    if errorlevel 99 goto CANCELLED_BY_USER
+    if errorlevel 98 goto MAIN_MENU
+    if errorlevel 97 goto CLEANUP_EXIT
+)
+
+:MODE_SRTCHECK_NEXT
+if exist "!src_path!!src_name!.json" del "!src_path!!src_name!.json" >nul 2>&1
+for %%W in ("!src_path!!src_name!*.wav") do if exist "%%W" del "%%W" >nul 2>&1
+goto MODE_SRTCHECK_LOOP
+
+:MODE_SRTCHECK_DONE
+if not defined did_work (
+    echo.
+    echo [FAST-WHISPER] Nothing to do - all dropped files already have subtitles.
+    echo.
+)
+goto END
+
+:: ============================================================
+::  Subroutine: expand dropped folder into media files
+:: ============================================================
+:EXPAND_DIR
+set "file_count=0"
+pushd "!DIR_PATH!"
+for /r %%F in (*) do (
+    set "fext=%%~xF"
+    set "ismedia="
+    for %%E in (.mp4 .mkv .m4v .mov .avi .webm .wmv .flv .mpg .mpeg .ts .m2ts .mts .vob .3gp .ogv .mp3 .wav .m4a .aac .flac .ogg .opus .wma .aiff .aif .m4b .caf .amr .wv .ape) do (
+        if /i "!fext!"=="%%E" set "ismedia=1"
+    )
+    if defined ismedia (
+        set /a file_count+=1
+        set "file[!file_count!]=%%F"
+    )
+)
+popd
+exit /b
+
+:: ============================================================
+::  Subroutine: whisper transcription of one file
+:: ============================================================
+:MODE_WHISPER_ONE
+set "LANG_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --language !LANG! --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
+"%DP%faster-whisper-xxl.exe" !LANG_FLAGS! "!src!" 2>>"!ERRLOG!"
+if "%errorlevel%"=="-1073741510" exit /b 99
+if errorlevel 1 (
+    echo [FAST-WHISPER] Whisper transcription failed - exit code !errorlevel!
+    if exist "!ERRLOG!" type "!ERRLOG!"
+    if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
+    exit /b 1
+)
+if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
+if not exist "!src_path!!src_name!.srt" (
+    echo [FAST-WHISPER] No subtitle produced: !src_name!.srt
+    exit /b 1
+)
+move /y "!src_path!!src_name!.srt" "!src_path!!src_name!!OUT_SUFFIX!" >nul
+set "did_work=1"
+exit /b 0
+
+:: ============================================================
+::  Subroutine: Ollama translation of one subtitle
+:: ============================================================
+:MODE_TRANSLATE_ONE
+if not defined TRANS_READY (
+    call :ASK_CONTEXT
+    if /i "!CTX!"=="C" exit /b 99
+    if /i "!CTX!"=="R" exit /b 98
+    if /i "!CTX!"=="E" exit /b 97
+    echo.
+    echo [FAST-WHISPER] Checking Ollama ...
+    call :OLLAMA_SETUP
+    set "TRANS_READY=1"
+)
+if not exist "!src_path!!src_name!!TR_SRC!" (
+    echo [FAST-WHISPER] Source subtitle missing: !src_name!!TR_SRC!
+    exit /b 1
+)
+echo.
+echo [FAST-WHISPER] Starting translation via Ollama (!TR_FROM! to !TR_TO!) ...
+echo.
+python "%DP%translate_srt.py" "!src_path!!src_name!!TR_SRC!" "!src_path!!src_name!!TR_DST!" !CTX! "!MODEL!" !TR_TARGET!
+if "%errorlevel%"=="-1073741510" exit /b 99
+if errorlevel 1 (
+    echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
+    exit /b 1
+)
+if exist "!src_path!!src_name!!TR_DST!" (
+    echo [FAST-WHISPER] Translation created: !src_name!!TR_DST!
+    set "did_work=1"
+) else (
+    echo [FAST-WHISPER] Translation failed - no output written.
+)
+exit /b 0
 ::  Error handling for transcription modes
 :: ============================================================
 :TRANSCRIBE_FAIL
@@ -190,102 +344,7 @@ if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 echo.
 goto CLEANUP_JSON
 
-:: ============================================================
-::  [5] TRANSLATE - German source  (Whisper DE, Ollama DE -> EN)
-:: ============================================================
-:MODE_TRANSLATE_DE
-set "TRANSLATE_LANG=--language de"
-set "TRANSLATE_SRC_SUFFIX=.DE.srt"
-set "TRANSLATE_TRG_SUFFIX=.EN.srt"
-set "TRANSLATE_TARGET=en"
-set "TRANSLATE_SRC_NAME=German"
-set "TRANSLATE_TRG_NAME=English"
-goto MODE_TRANSLATE
 
-:: ============================================================
-::  [6] TRANSLATE - English source  (Whisper EN, Ollama EN -> DE)
-:: ============================================================
-:MODE_TRANSLATE_EN
-set "TRANSLATE_LANG=--language en"
-set "TRANSLATE_SRC_SUFFIX=.EN.srt"
-set "TRANSLATE_TRG_SUFFIX=.DE.srt"
-set "TRANSLATE_TARGET=de"
-set "TRANSLATE_SRC_NAME=English"
-set "TRANSLATE_TRG_NAME=German"
-goto MODE_TRANSLATE
-
-:: ============================================================
-::  [5]/[6] TRANSLATE  (Whisper transcription + Ollama translation)
-:: ============================================================
-:MODE_TRANSLATE
-call :ASK_CONTEXT
-if /i "!CTX!"=="C" goto CANCELLED_BY_USER
-if /i "!CTX!"=="R" goto MAIN_MENU
-if /i "!CTX!"=="E" goto CLEANUP_EXIT
-echo.
-echo [FAST-WHISPER] Checking Ollama ...
-call :OLLAMA_SETUP
-
-set "TRANSLATE_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 !TRANSLATE_LANG! --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
-
-set "i=0"
-:TRANSLATE_LOOP
-set /a i+=1
-if !i! gtr !file_count! goto TRANSLATE_DONE
-
-set "src=!file[%i%]!"
-set "src_path="
-set "src_name="
-for %%F in ("!src!") do (
-    set "src_path=%%~dpF"
-    set "src_name=%%~nF"
-)
-
-echo.
-echo [FAST-WHISPER] Processing: !src_name!
-echo.
-
-"%DP%faster-whisper-xxl.exe" !TRANSLATE_FLAGS! "!src!" 2>>"!ERRLOG!"
-if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
-if errorlevel 1 (
-    echo [FAST-WHISPER] Whisper transcription failed - exit code !errorlevel!
-    if exist "!ERRLOG!" type "!ERRLOG!"
-    if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
-    goto TRANSLATE_NEXT
-)
-if exist "!ERRLOG!" type "!ERRLOG!"
-if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
-
-if not exist "!src_path!!src_name!.srt" (
-    echo [FAST-WHISPER] No subtitle produced: !src_name!.srt
-    goto TRANSLATE_NEXT
-)
-
-move /y "!src_path!!src_name!.srt" "!src_path!!src_name!!TRANSLATE_SRC_SUFFIX!" >nul
-if exist "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" del "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" >nul 2>&1
-echo.
-echo [FAST-WHISPER] Starting translation via Ollama (!TRANSLATE_SRC_NAME! to !TRANSLATE_TRG_NAME!) ...
-echo.
-python "%DP%translate_srt.py" "!src_path!!src_name!!TRANSLATE_SRC_SUFFIX!" "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" !CTX! "!MODEL!" !TRANSLATE_TARGET!
-if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
-if errorlevel 1 (
-    echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
-    goto TRANSLATE_NEXT
-)
-if exist "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" (
-    echo [FAST-WHISPER] Translation created: !src_name!!TRANSLATE_TRG_SUFFIX!
-) else (
-    echo [FAST-WHISPER] Translation failed - no output written.
-)
-
-:TRANSLATE_NEXT
-if exist "!src_path!!src_name!.json" move /y "!src_path!!src_name!.json" "!src_path!!src_name!.EN.json" >nul
-for %%W in ("!src_path!!src_name!*.wav") do del "%%W"
-for %%J in ("!src_path!!src_name!*.json") do del "%%J"
-goto TRANSLATE_LOOP
-
-:TRANSLATE_DONE
-goto END
 
 :: ============================================================
 ::  [7] BACKGROUND EXTRACTION

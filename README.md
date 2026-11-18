@@ -8,7 +8,7 @@
 
 - Windows 10/11 x64
 - **Python 3.x** with `requests` for the Ollama-based translation (the wrappers run `pip install requests` if it is missing)
-- **Ollama** for mode 5 and the SRT translator: installed automatically if missing, but the models must be pulled once — `ollama pull mistral-nemo` (and `ollama pull translategemma:12b` for context option B)
+- **Ollama** for the translation steps (modes 3-6 when a translation is needed) and the SRT translator: installed automatically if missing, but the models must be pulled once — `ollama pull mistral-nemo` (and `ollama pull translategemma:12b` for context option B)
 - Free disk space for the Whisper model cache in `_models/` (several GB)
 - For CUDA: an NVIDIA GPU. `large-v2` needs at least 6 GB VRAM; running the Ollama DE translation on the same GPU (mistral-nemo about 7.1 GB, translategemma:12b about 8.1 GB for option B) needs at least 10 GB VRAM. CPU-only works but is much slower.
 
@@ -29,11 +29,20 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - `[6]` Translate ENGLISH: Whisper `--language en` → `<name>.EN.srt`, then Ollama translates EN→DE → `<name>.DE.srt`
 - `[7]` Vocal/background separation — outputs clean background WAV
 
+**Existing subtitles are reused (modes 3–6):**
+- Existing `<name>.DE.srt` / `<name>.EN.srt` next to a media file are reused instead of running Whisper again.
+- If the subtitle a mode needs is missing but the other language exists, it is produced via Ollama translation (both directions: DE→EN and EN→DE).
+- If all subtitles a mode needs already exist, the file is skipped (`[FAST-WHISPER] Subtitle already exists ...`) — nothing is re-transcribed.
+- A plain `<name>.srt` (without language suffix) is not reused.
+- Folder drops: media files are found recursively; sidecar files (`*.srt`, `*.json`, `*.wav`, …) are ignored.
+- Modes 3–6 process one file at a time, so the reuse decision can be made per file (Whisper/model is loaded per file when transcription is needed).
+
 **Features:**
 - Drop SRT files directly onto the script to skip the menu and go straight to translation
 - Ollama is installed automatically if missing; the models must be pulled once (see [Requirements](#requirements))
 - Ollama is restarted with GPU-friendly settings (`OLLAMA_KV_CACHE_TYPE=q4_0`, `OLLAMA_FLASH_ATTENTION=1`) — this stops other running Ollama sessions
 - JSON and intermediate WAV files are removed automatically after each run
+- `Ctrl+C` cancels the current run: Whisper stderr is captured (no Python tracebacks) and the script ends with `[FAST-WHISPER] Cancelled by user.` (cmd still shows its own `Batchvorgang abbrechen (J/N)?` prompt — answer `N` so the script can clean up)
 
 ---
 
@@ -44,8 +53,8 @@ Standalone SRT translator — English to German via Ollama, fully local. Uses mi
 **Features:**
 - Drop one or more SRT files for batch processing
 - No cloud, no API key required
-- Direction: English→German by default; 	ranscribe.cmd modes 5/6 additionally use German→English (target language is passed as 5th argument)
-- Selectable context block count (0, 3, `A` = 10 with mistral-nemo, `B` = 10 with `translategemma:12b`): controls translation coherence vs. speed; pressing Enter selects B; `R` returns to the main menu
+- Direction: English→German by default; `transcribe.cmd` modes 5/6 additionally use German→English (target language is passed as 5th argument)
+- Selectable context block count (0, 3, `A` = 10 with mistral-nemo, `B` = 10 with `translategemma:12b`): controls translation coherence vs. speed; pressing Enter selects B; `R` returns to the main menu; `E` exits
 - Output naming: `video.EN.srt` → `video.DE.srt`, or `video.srt` → `video.DE.srt`
 - Ollama is installed automatically if missing; the models must be pulled once (`ollama pull mistral-nemo`, `ollama pull translategemma:12b` for option B)
 
