@@ -905,7 +905,8 @@ if "!DMFAIL!"=="1" (
     echo [FAST-WHISPER] All faster-whisper models are available.
 )
 echo.
-goto END
+pause
+goto MAIN_MENU
 
 :WHISPER_MODEL_ABORT
 echo.
