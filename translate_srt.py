@@ -24,7 +24,7 @@ def _server_running():
         return False
 
 def _start_server():
-    print("  Starting Ollama server ...", flush=True)
+    print("[FAST-WHISPER] Starting Ollama server ...", flush=True)
     kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
     if sys.platform == "win32":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
@@ -33,7 +33,7 @@ def _start_server():
         time.sleep(1)
         if _server_running():
             return True
-    print("  [ERROR] Ollama server did not respond in time.")
+    print("[FAST-WHISPER] [ERROR] Ollama server did not respond in time.")
     return False
 
 def _preload_model():
@@ -44,7 +44,7 @@ def _preload_model():
         }, timeout=10)
     except:
         pass
-    print(f"  Preloading [{MODEL}] ...", flush=True)
+    print(f"[FAST-WHISPER] Preloading [{MODEL}] ...", flush=True)
     print()
     try:
         requests.post(f"{OLLAMA_API}/api/generate", json={
@@ -71,7 +71,7 @@ def setup_ollama():
     # Always restart so OLLAMA_FLASH_ATTENTION and OLLAMA_KV_CACHE_TYPE
     # (set by Transcribe.bat) are inherited by the server process.
     if _server_running():
-        print("  Restarting Ollama to apply GPU memory settings ...", flush=True)
+        print("[FAST-WHISPER] Restarting Ollama to apply GPU memory settings ...", flush=True)
         stop_ollama()
         time.sleep(3)
     if not _start_server():
@@ -268,7 +268,7 @@ def translate_text(text, context_blocks=None, ctx=3, force_variety=False, _allow
         # Fallback to original text if model returned nothing
         return result if result else text
     except Exception as e:
-        print(f"\n  [WARNING] Translation failed: {e}", flush=True)
+        print(f"\n[FAST-WHISPER] [WARNING] Translation failed: {e}", flush=True)
         return text
 
 def split_translation(text):
@@ -326,7 +326,7 @@ def process_srt(input_file, output_file, ctx=3):
     last_flush = 0
     try:
         for i in range(total_blocks):
-            print(f"\r{i+1} of {total_blocks} subtitles translated", end="", flush=True)
+            print(f"\r[FAST-WHISPER] {i+1} of {total_blocks} subtitles translated", end="", flush=True)
             if skip_next:
                 skip_next = False
                 continue
@@ -359,12 +359,12 @@ def process_srt(input_file, output_file, ctx=3):
                 last_flush = len(translated_blocks)
 
     except KeyboardInterrupt:
-        print(f"\n\n  [CANCELLED] {len(translated_blocks)} of {total_blocks} subtitles translated.", flush=True)
+        print(f"\n\n[FAST-WHISPER] [CANCELLED] {len(translated_blocks)} of {total_blocks} subtitles translated.", flush=True)
         if translated_blocks:
             write_srt(output_file, header, translated_blocks)
-            print(f"  Partial translation saved to:\n  {output_file}", flush=True)
+            print(f"[FAST-WHISPER] Partial translation saved to:\n[FAST-WHISPER] {output_file}", flush=True)
         else:
-            print("  Nothing to save.", flush=True)
+            print("[FAST-WHISPER] Nothing to save.", flush=True)
         cleanup_wavs(input_file)
         stop_ollama()
         print()
@@ -376,7 +376,7 @@ def process_srt(input_file, output_file, ctx=3):
     duration = end_timer - start_timer
     hours, rem = divmod(duration, 3600)
     minutes, seconds = divmod(rem, 60)
-    print(f"\n\nTranslation finished in: {int(hours)}:{int(minutes):02}:{seconds:06.3f}\n")
+    print(f"\n\n[FAST-WHISPER] Translation finished in: {int(hours)}:{int(minutes):02}:{seconds:06.3f}\n")
 
 if __name__ == "__main__":
     if len(sys.argv) >= 3:

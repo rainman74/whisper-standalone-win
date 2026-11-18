@@ -8,10 +8,11 @@ set "MODEL=mistral-nemo"
 
 if "%~1"=="" (
     echo.
-    echo  No file detected.
-    echo  Drop one or more SRT files onto this script.
+    echo [FAST-WHISPER] No file detected.
+    echo [FAST-WHISPER] Drop one or more SRT files onto this script.
     echo.
-    pause
+    echo [FAST-WHISPER] Press any key to continue . . .
+    pause >nul
     exit /b
 )
 
@@ -28,18 +29,18 @@ if not "%~1"=="" goto COLLECT
 ::  Ask for context block count
 :: ============================================================
 echo.
-echo  -------------------------------------------------------
-echo   Context blocks for translation:
-echo  -------------------------------------------------------
+echo [FAST-WHISPER] -------------------------------------------------------
+echo [FAST-WHISPER] Context blocks for translation:
+echo [FAST-WHISPER] -------------------------------------------------------
 echo.
-echo   Key  Benefit                        Speed
-echo   ---  -----------------------------  --------------
-echo   0    No context                     Fastest
-echo   3    Good compromise                Moderate
-echo   A    Full entity tracking (Mistral) Slowest
-echo   B    Full entity tracking (Gemma)   Best
+echo [FAST-WHISPER] Key  Benefit                        Speed
+echo [FAST-WHISPER] ---  -----------------------------  --------------
+echo [FAST-WHISPER] 0    No context                     Fastest
+echo [FAST-WHISPER] 3    Good compromise                Moderate
+echo [FAST-WHISPER] A    Full entity tracking (Mistral) Slowest
+echo [FAST-WHISPER] B    Full entity tracking (Gemma)   Best
 echo.
-choice /c 03ABE /n /m "  Context blocks [0, 3, A = 10, B = 10, E = Abort]: "
+choice /c 03ABE /n /m "[FAST-WHISPER] Context blocks [0, 3, A = 10, B = 10, E = Abort]: "
 if errorlevel 5 goto TSRT_END
 if errorlevel 4 (set "CTX=10" & set "MODEL=translategemma:12b" & goto CTX_DONE)
 if errorlevel 3 (set "CTX=10" & goto CTX_DONE)
@@ -51,7 +52,7 @@ if errorlevel 1 (set "CTX=0"  & goto CTX_DONE)
 ::  Ollama prerequisites
 :: ============================================================
 echo.
-echo  Checking Ollama ...
+echo [FAST-WHISPER] Checking Ollama ...
 
 call :OLLAMA_SETUP
 
@@ -80,18 +81,18 @@ if /i "!srt_base:~-3!"==".EN" set "out_base=!srt_base:~0,-3!"
 set "out_file=!srt_path!!out_base!.DE.srt"
 
 echo.
-echo  Translating: !srt_base!.srt  --^>  !out_base!.DE.srt
+echo [FAST-WHISPER] Translating: !srt_base!.srt  --^>  !out_base!.DE.srt
 echo.
 
 if exist "!out_file!" del "!out_file!" >nul 2>&1
 python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX! "!MODEL!"
 if errorlevel 1 (
-    echo  [ERROR] Translation failed - exit code !errorlevel!
+    echo [FAST-WHISPER] [ERROR] Translation failed - exit code !errorlevel!
 ) else (
     if exist "!out_file!" (
-        echo  [OK] German translation created: !out_base!.DE.srt
+        echo [FAST-WHISPER] [OK] German translation created: !out_base!.DE.srt
     ) else (
-        echo  [ERROR] Translation failed - no output written.
+        echo [FAST-WHISPER] [ERROR] Translation failed - no output written.
     )
 )
 goto SRT_INNER
@@ -104,28 +105,28 @@ goto SRT_INNER
 :: --- Python is required for the Ollama translation ---
 where python >nul 2>nul
 if errorlevel 1 (
-    echo  [ERROR] Python not found in PATH - required for the Ollama translation.
-    echo          Install Python 3.x and make sure "python" is available.
+    echo [FAST-WHISPER] [ERROR] Python not found in PATH - required for the Ollama translation.
+    echo [FAST-WHISPER] Install Python 3.x and make sure "python" is available.
     goto TSRT_END
 )
 
 :: --- Install Ollama if missing ---
 where ollama >nul 2>nul
 if errorlevel 1 (
-    echo  Ollama not found. Downloading installer ...
+    echo [FAST-WHISPER] Ollama not found. Downloading installer ...
     curl -L https://ollama.com/download/OllamaSetup.exe -o "%temp%\OllamaSetup.exe"
     if errorlevel 1 (
-        echo  [ERROR] Ollama download failed - check your internet connection.
+        echo [FAST-WHISPER] [ERROR] Ollama download failed - check your internet connection.
         goto TSRT_END
     )
-    echo  Installing Ollama ...
+    echo [FAST-WHISPER] Installing Ollama ...
     start /wait "" "%temp%\OllamaSetup.exe" /silent
     if errorlevel 1 echo  [WARNING] Ollama installer returned an error.
     set "PATH=!PATH!;!LOCALAPPDATA!\Programs\Ollama"
     timeout /t 3 >nul
     where ollama >nul 2>nul
     if errorlevel 1 (
-        echo  [ERROR] Ollama is not available - please install it manually.
+        echo [FAST-WHISPER] [ERROR] Ollama is not available - please install it manually.
         goto TSRT_END
     )
 )
@@ -142,10 +143,10 @@ set "OLLAMA_NUM_THREADS=8"
 :: --- Check Python requests ---
 python -c "import requests" >nul 2>nul
 if errorlevel 1 (
-    echo  Installing Python package "requests" ...
+    echo [FAST-WHISPER] Installing Python package "requests" ...
     python -m pip install requests
     if errorlevel 1 (
-        echo  [ERROR] Could not install "requests" - translation will not work.
+        echo [FAST-WHISPER] [ERROR] Could not install "requests" - translation will not work.
         goto TSRT_END
     )
 )
@@ -154,5 +155,6 @@ exit /b
 
 :TSRT_END
 echo.
-pause
+echo [FAST-WHISPER] Press any key to continue . . .
+pause >nul
 exit /b
