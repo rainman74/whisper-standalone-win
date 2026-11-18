@@ -170,11 +170,15 @@ goto MODE_SRTCHECK
 
 :: ============================================================
 :MODE_TRANSLATE_DE
+call :CHECK_PYTHON
+if errorlevel 1 goto CLEANUP_EXIT
 set "LANG=de" & set "LANG_NAME=German" & set "OUT_SUFFIX=.DE.srt" & set "OTHER_SUFFIX=.EN.srt" & set "OTHER_LANG=en" & set "OTHER_NAME=English" & set "NEED_BOTH=1"
 goto MODE_SRTCHECK
 
 :: ============================================================
 :MODE_TRANSLATE_EN
+call :CHECK_PYTHON
+if errorlevel 1 goto CLEANUP_EXIT
 set "LANG=en" & set "LANG_NAME=English" & set "OUT_SUFFIX=.EN.srt" & set "OTHER_SUFFIX=.DE.srt" & set "OTHER_LANG=de" & set "OTHER_NAME=German" & set "NEED_BOTH=1"
 goto MODE_SRTCHECK
 
@@ -295,6 +299,7 @@ if !job_count! gtr 0 (
     echo.
     echo [FAST-WHISPER] Checking Ollama ...
     call :OLLAMA_SETUP
+    if errorlevel 1 goto CLEANUP_EXIT
     python "%DP%translate_srt.py" --batch "!JOBFILE!" !CTX! "!MODEL!"
     if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
     if errorlevel 1 (
@@ -443,6 +448,8 @@ goto BACKGROUND_LOOP
 ::  SRT DIRECT TRANSLATION  (SRT dropped onto script)
 :: ============================================================
 :MODE_SRT_TRANSLATE
+call :CHECK_PYTHON
+if errorlevel 1 goto CLEANUP_EXIT
 set "JOBFILE=%TEMP%\faster-whisper-jobs.txt"
 if exist "!JOBFILE!" del "!JOBFILE!" >nul 2>&1
 set "job_count=0"
@@ -543,6 +550,7 @@ if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
 echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
+if errorlevel 1 goto CLEANUP_EXIT
 python "%DP%translate_srt.py" --batch "!JOBFILE!" !CTX! "!MODEL!"
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
@@ -714,16 +722,30 @@ echo   Invalid choice - please enter 0, 3, A, B, E or R. Press Enter for B.
 goto CTX_INPUT
 
 :: ============================================================
+::  Subroutine: check Python 3.x
+:: ============================================================
+:CHECK_PYTHON
+where python >nul 2>nul
+if errorlevel 1 goto PYTHON_MISSING
+python -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >nul 2>nul
+if errorlevel 1 goto PYTHON_MISSING
+exit /b
+
+:PYTHON_MISSING
+echo.
+echo [FAST-WHISPER] No working Python 3.x found.
+echo [FAST-WHISPER] Please install Python 3.x first: https://www.python.org/downloads/
+echo [FAST-WHISPER] During setup enable "Add python.exe to PATH", then run again.
+echo.
+exit /b 1
+
+:: ============================================================
 ::  Subroutine: check Ollama / Python prerequisites
 :: ============================================================
 :OLLAMA_SETUP
 
-where python >nul 2>nul
-if errorlevel 1 (
-    echo [FAST-WHISPER] Python not found in PATH - required for the Ollama translation.
-    echo [FAST-WHISPER] Install Python 3.x and make sure "python" is available.
-    goto END
-)
+call :CHECK_PYTHON
+if errorlevel 1 exit /b 1
 
 where ollama >nul 2>nul
 if errorlevel 1 (
@@ -731,7 +753,7 @@ if errorlevel 1 (
     curl -L https://ollama.com/download/OllamaSetup.exe -o "%temp%\OllamaSetup.exe"
     if errorlevel 1 (
         echo [FAST-WHISPER] Ollama download failed - check your internet connection.
-        goto END
+        exit /b 1
     )
     echo [FAST-WHISPER] Installing Ollama ...
     start /wait "" "%temp%\OllamaSetup.exe" /silent
@@ -741,7 +763,7 @@ if errorlevel 1 (
     where ollama >nul 2>nul
     if errorlevel 1 (
         echo [FAST-WHISPER] Ollama is not available - please install it manually.
-        goto END
+        exit /b 1
     )
 )
 
@@ -759,7 +781,7 @@ if errorlevel 1 (
     python -m pip install requests
     if errorlevel 1 (
         echo [FAST-WHISPER] Could not install "requests" - translation will not work.
-        goto END
+        exit /b 1
     )
 )
 
