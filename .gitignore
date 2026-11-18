@@ -14,3 +14,4 @@ whisper-nvidia-dll.zip
 _xxl_data/torch/lib/torch_*.dll
 _xxl_data/torch/lib/cu*.dll
 _xxl_data/onnxruntime/capi/onnxruntime_providers_cuda.dll
+whisper-standalone-win-dlls.zip
