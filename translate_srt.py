@@ -26,6 +26,7 @@ def _server_running():
 
 def _start_server():
     print("[FAST-WHISPER] Starting Ollama server ...", flush=True)
+    print()
     kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
     if sys.platform == "win32":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
