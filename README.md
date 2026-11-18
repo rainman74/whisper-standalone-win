@@ -40,6 +40,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 **Features:**
 - Drop SRT files directly onto the script to skip the menu and go straight to translation — no Whisper involved
 - SRT direction is chosen per file: `.EN.srt` → `.DE.srt`, `.DE.srt` → `.EN.srt`, plain `.srt` is treated as English → `.DE.srt`; existing target subtitles are skipped
+- A plain `<name>.srt` counts as the English version: dropping `<name>.DE.srt` is skipped when `<name>.srt` or `<name>.EN.srt` already exists
 - Ollama is installed automatically if missing; the models must be pulled once (see [Requirements](#requirements))
 - Ollama is restarted with GPU-friendly settings (`OLLAMA_KV_CACHE_TYPE=q4_0`, `OLLAMA_FLASH_ATTENTION=1`) — this stops other running Ollama sessions
 - JSON and intermediate WAV files are removed automatically after each run
@@ -57,7 +58,7 @@ Standalone SRT translator — English↔German via Ollama, fully local. Uses mis
 - No cloud, no API key required
 - Direction is chosen per file: `.EN.srt` → German, `.DE.srt` → English, plain `.srt` → German; files can be mixed in one drop
 - Selectable context block count (0, 3, `A` = 10 with mistral-nemo, `B` = 10 with `translategemma:12b`): controls translation coherence vs. speed; pressing Enter selects B; `R` returns to the main menu; `E` exits
-- Output naming: `video.EN.srt` → `video.DE.srt`, `video.DE.srt` → `video.EN.srt`, `video.srt` → `video.DE.srt`; existing targets are skipped
+- Output naming: `video.EN.srt` → `video.DE.srt`, `video.DE.srt` → `video.EN.srt`, `video.srt` → `video.DE.srt`; existing targets are skipped (a plain `video.srt` also counts as the existing English version)
 - All files of one invocation are translated in a single Ollama batch (model loaded once); duplicate target names are translated only once
 - Ollama is installed automatically if missing; the models must be pulled once (`ollama pull mistral-nemo`, `ollama pull translategemma:12b` for option B)
 

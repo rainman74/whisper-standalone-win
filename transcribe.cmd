@@ -448,6 +448,10 @@ if exist "!dst!" (
     echo [FAST-WHISPER] Subtitle already exists: !base!.!target!.srt
     goto SRT_LOOP_NEXT
 )
+if /i "!target!"=="EN" if exist "!srt_path!!base!.srt" (
+    echo [FAST-WHISPER] Subtitle already exists: !base!.srt - treated as English
+    goto SRT_LOOP_NEXT
+)
 set "dup="
 set "di=0"
 :SRT_DUP_LOOP
