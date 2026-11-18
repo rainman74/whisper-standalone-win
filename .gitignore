@@ -5,9 +5,6 @@ settings.json
 # Model binaries under _models are never versioned (any depth)
 _models/**/*.bin
 
-cu*.dll
-torch_*.dll
-onnx*.dll
 whisper-standalone-win.zip
 whisper-nvidia-dll.zip
 .___CLAUDE___.cmd
@@ -16,3 +13,8 @@ whisper-nvidia-dll.zip
 *.srt
 *.json
 *.mp4
+# Only the huge CUDA/torch binaries in torch/lib stay out of Git
+_xxl_data/torch/lib/torch_*.dll
+_xxl_data/torch/lib/cu*.dll
+# 392.8 MB - exceeds GitHub's 100 MB file limit (LFS uploads blocked for public forks)
+_xxl_data/onnxruntime/capi/onnxruntime_providers_cuda.dll
