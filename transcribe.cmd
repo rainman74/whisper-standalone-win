@@ -8,11 +8,10 @@ setlocal enabledelayedexpansion
 :INIT
 if "%~1"=="" (
     echo.
-    echo [FAST-WHISPER] No file detected.
-    echo [FAST-WHISPER] Drop a video or audio file onto this script.
+    echo  No file detected.
+    echo  Drop a video or audio file onto this script.
     echo.
-    echo [FAST-WHISPER] Press any key to continue . . .
-    pause >nul
+    pause
     exit /b
 )
 
@@ -48,27 +47,27 @@ if /i "%_ext%"==".srt" goto MODE_SRT_TRANSLATE
 :: ============================================================
 cls
 echo.
-echo [FAST-WHISPER] 8""""                                    8   8  8                                       8   8 8   8 8
-echo [FAST-WHISPER] 8     eeeee eeeee eeeee eeee eeeee       8   8  8 e   e e  eeeee eeeee eeee eeeee        8 8   8 8  8
-echo [FAST-WHISPER] 8eeee 8   8 8   "   8   8    8   8       8e  8  8 8   8 8  8   " 8   8 8    8   8        eee   eee  8e
-echo [FAST-WHISPER] 88    8eee8 8eeee   8e  8eee 8eee8e eeee 88  8  8 8eee8 8e 8eeee 8eee8 8eee 8eee8e eeee 88  8 88  8 88
-echo [FAST-WHISPER] 88    88  8    88   88  88   88   8      88  8  8 88  8 88    88 88    88   88   8      88  8 88  8 88
-echo [FAST-WHISPER] 88    88  8 8ee88   88  88ee 88   8      88ee8ee8 88  8 88 8ee88 88    88ee 88   8      88  8 88  8 88eee
+echo      8""""                                    8   8  8                                       8   8 8   8 8
+echo      8     eeeee eeeee eeeee eeee eeeee       8   8  8 e   e e  eeeee eeeee eeee eeeee        8 8   8 8  8
+echo      8eeee 8   8 8   "   8   8    8   8       8e  8  8 8   8 8  8   " 8   8 8    8   8        eee   eee  8e
+echo      88    8eee8 8eeee   8e  8eee 8eee8e eeee 88  8  8 8eee8 8e 8eeee 8eee8 8eee 8eee8e eeee 88  8 88  8 88
+echo      88    88  8    88   88  88   88   8      88  8  8 88  8 88    88 88    88   88   8      88  8 88  8 88
+echo      88    88  8 8ee88   88  88ee 88   8      88ee8ee8 88  8 88 8ee88 88    88ee 88   8      88  8 88  8 88eee
 echo.
-echo [FAST-WHISPER] !file_count! file(s) loaded.
+echo  !file_count! file(s) loaded.
 echo.
-echo [FAST-WHISPER] -------------------------------------------------------
-echo [FAST-WHISPER] What do you want to do?
-echo [FAST-WHISPER] -------------------------------------------------------
+echo  -------------------------------------------------------
+echo   What do you want to do?
+echo  -------------------------------------------------------
 echo.
-echo [FAST-WHISPER] [1]  Transcribe AUTO          (language auto-detect)
-echo [FAST-WHISPER] [2]  Transcribe AUTO+DIARIZE  (speaker recognition)
-echo [FAST-WHISPER] [3]  Transcribe GERMAN        (language forced)
-echo [FAST-WHISPER] [4]  Transcribe ENGLISH       (language forced)
-echo [FAST-WHISPER] [5]  Translate                (Whisper EN + DE via Ollama)
-echo [FAST-WHISPER] [6]  Background Extraction    (remove vocals)
+echo   [1]  Transcribe AUTO          (language auto-detect)
+echo   [2]  Transcribe AUTO+DIARIZE  (speaker recognition)
+echo   [3]  Transcribe GERMAN        (language forced)
+echo   [4]  Transcribe ENGLISH       (language forced)
+echo   [5]  Translate                (Whisper EN + DE via Ollama)
+echo   [6]  Background Extraction    (remove vocals)
 echo.
-choice /c 123456E /n /m "[FAST-WHISPER] Select [1-6, E = Abort]: "
+choice /c 123456E /n /m "  Select [1-6, E = Abort]: "
 
 if errorlevel 7 goto END
 if errorlevel 6 goto MODE_BACKGROUND
@@ -380,18 +379,18 @@ goto CHECK_OUTPUT_LOOP
 :: ============================================================
 :ASK_CONTEXT
 echo.
-echo [FAST-WHISPER] -------------------------------------------------------
-echo [FAST-WHISPER] Context blocks for translation:
-echo [FAST-WHISPER] -------------------------------------------------------
+echo  -------------------------------------------------------
+echo   Context blocks for translation:
+echo  -------------------------------------------------------
 echo.
-echo [FAST-WHISPER] Key  Benefit                        Speed
-echo [FAST-WHISPER] ---  -----------------------------  --------------
-echo [FAST-WHISPER] 0    No context                     Fastest
-echo [FAST-WHISPER] 3    Good compromise                Moderate
-echo [FAST-WHISPER] A    Full entity tracking (Mistral) Slowest
-echo [FAST-WHISPER] B    Full entity tracking (Gemma)   Best
+echo   Key  Benefit                        Speed
+echo   ---  -----------------------------  --------------
+echo   0    No context                     Fastest
+echo   3    Good compromise                Moderate
+echo   A    Full entity tracking (Mistral) Slowest
+echo   B    Full entity tracking (Gemma)   Best
 echo.
-choice /c 03ABE /n /m "[FAST-WHISPER] Context blocks [0, 3, A = 10, B = 10, E = Abort]: "
+choice /c 03ABE /n /m "  Context blocks [0, 3, A = 10, B = 10, E = Abort]: "
 if errorlevel 5 (set "CTX=E"  & exit /b)
 if errorlevel 4 (set "CTX=10" & set "MODEL=translategemma:12b" & exit /b)
 if errorlevel 3 (set "CTX=10" & exit /b)

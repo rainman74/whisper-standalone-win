@@ -8,11 +8,10 @@ set "MODEL=mistral-nemo"
 
 if "%~1"=="" (
     echo.
-    echo [FAST-WHISPER] No file detected.
-    echo [FAST-WHISPER] Drop one or more SRT files onto this script.
+    echo  No file detected.
+    echo  Drop one or more SRT files onto this script.
     echo.
-    echo [FAST-WHISPER] Press any key to continue . . .
-    pause >nul
+    pause
     exit /b
 )
 
@@ -29,18 +28,18 @@ if not "%~1"=="" goto COLLECT
 ::  Ask for context block count
 :: ============================================================
 echo.
-echo [FAST-WHISPER] -------------------------------------------------------
-echo [FAST-WHISPER] Context blocks for translation:
-echo [FAST-WHISPER] -------------------------------------------------------
+echo  -------------------------------------------------------
+echo   Context blocks for translation:
+echo  -------------------------------------------------------
 echo.
-echo [FAST-WHISPER] Key  Benefit                        Speed
-echo [FAST-WHISPER] ---  -----------------------------  --------------
-echo [FAST-WHISPER] 0    No context                     Fastest
-echo [FAST-WHISPER] 3    Good compromise                Moderate
-echo [FAST-WHISPER] A    Full entity tracking (Mistral) Slowest
-echo [FAST-WHISPER] B    Full entity tracking (Gemma)   Best
+echo   Key  Benefit                        Speed
+echo   ---  -----------------------------  --------------
+echo   0    No context                     Fastest
+echo   3    Good compromise                Moderate
+echo   A    Full entity tracking (Mistral) Slowest
+echo   B    Full entity tracking (Gemma)   Best
 echo.
-choice /c 03ABE /n /m "[FAST-WHISPER] Context blocks [0, 3, A = 10, B = 10, E = Abort]: "
+choice /c 03ABE /n /m "  Context blocks [0, 3, A = 10, B = 10, E = Abort]: "
 if errorlevel 5 goto TSRT_END
 if errorlevel 4 (set "CTX=10" & set "MODEL=translategemma:12b" & goto CTX_DONE)
 if errorlevel 3 (set "CTX=10" & goto CTX_DONE)
