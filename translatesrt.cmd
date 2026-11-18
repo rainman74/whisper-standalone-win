@@ -65,13 +65,13 @@ call :OLLAMA_SETUP
 ::  Translate loop
 :: ============================================================
 call :SRT_PROCESS
-goto TSRT_END
-
-:SRT_PROCESS
+set "JOBFILE=%TEMP%\faster-whisper-jobs.txt"
+if exist "!JOBFILE!" del "!JOBFILE!" >nul 2>&1
+set "job_count=0"
 set "i=0"
 :SRT_INNER
 set /a i+=1
-if !i! gtr !file_count! exit /b
+if !i! gtr !file_count! goto SRT_RUN
 
 set "src=!file[%i%]!"
 set "srt_path="
@@ -80,28 +80,25 @@ for %%F in ("!src!") do (
     set "srt_path=%%~dpF"
     set "srt_base=%%~nF"
 )
-
 set "out_base=!srt_base!"
 if /i "!srt_base:~-3!"==".EN" set "out_base=!srt_base:~0,-3!"
 set "out_file=!srt_path!!out_base!.DE.srt"
-
-echo.
-echo [FAST-WHISPER] Translating: !srt_base!.srt  --^>  !out_base!.DE.srt
-echo.
-
 if exist "!out_file!" del "!out_file!" >nul 2>&1
-python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX! "!MODEL!"
-if errorlevel 1 (
-    echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
-) else (
-    if exist "!out_file!" (
-        echo [FAST-WHISPER] German translation created: !out_base!.DE.srt
-    ) else (
-        echo [FAST-WHISPER] Translation failed - no output written.
-    )
-)
+call :ADD_JOB "!src!" "!out_file!" de
 goto SRT_INNER
 
+:SRT_RUN
+if !job_count!==0 exit /b
+python "%DP%translate_srt.py" --batch "!JOBFILE!" !CTX! "!MODEL!"
+if "%errorlevel%"=="-1073741510" exit /b
+if errorlevel 1 echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
+if exist "!JOBFILE!" del "!JOBFILE!" >nul 2>&1
+exit /b
+
+:ADD_JOB
+set /a job_count+=1
+>>"!JOBFILE!" echo "%~1"^|"%~2"^|%~3
+exit /b
 :: ============================================================
 ::  Subroutine: check Ollama / Python prerequisites
 :: ============================================================

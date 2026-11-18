@@ -338,7 +338,7 @@ def write_srt(path, header, translated_blocks):
 
 FLUSH_EVERY = 20   # write progress to disk every N translated blocks
 
-def process_srt(input_file, output_file, ctx=3):
+def process_srt(input_file, output_file, ctx=3, quiet_finish=False):
     start_timer = time.time()
     with open(input_file, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -404,9 +404,55 @@ def process_srt(input_file, output_file, ctx=3):
     duration = end_timer - start_timer
     hours, rem = divmod(duration, 3600)
     minutes, seconds = divmod(rem, 60)
-    print(f"\n\n[FAST-WHISPER] Translation finished in: {int(hours)}:{int(minutes):02}:{seconds:06.3f}\n")
+    if not quiet_finish:
+        print(f"\n\n[FAST-WHISPER] Translation finished in: {int(hours)}:{int(minutes):02}:{seconds:06.3f}\n")
+
+def process_batch(job_file, ctx=3):
+    global TARGET_LANG
+    start_timer = time.time()
+    jobs = []
+    with open(job_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = [p.strip().strip('"') for p in line.split('|')]
+            if len(parts) >= 3 and parts[0] and parts[1] and parts[2]:
+                jobs.append((parts[0], parts[1], parts[2].lower()))
+    total = len(jobs)
+    if total == 0:
+        print("[FAST-WHISPER] No translation jobs.", flush=True)
+        return
+    for idx, (src, dst, target) in enumerate(jobs, 1):
+        TARGET_LANG = target
+        print(f"\n[FAST-WHISPER] Translating ({idx} of {total}): {os.path.basename(src)}", flush=True)
+        if not os.path.exists(src):
+            print(f"[FAST-WHISPER] Source subtitle missing: {os.path.basename(src)}", flush=True)
+            continue
+        try:
+            process_srt(src, dst, ctx, quiet_finish=True)
+        except Exception as e:
+            print(f"[FAST-WHISPER] Translation failed: {e}", flush=True)
+            continue
+        if os.path.exists(dst):
+            print(f"\n[FAST-WHISPER] Translation created: {os.path.basename(dst)}", flush=True)
+        else:
+            print(f"\n[FAST-WHISPER] Translation failed - no output written: {os.path.basename(dst)}", flush=True)
+    end_timer = time.time()
+    duration = end_timer - start_timer
+    hours, rem = divmod(duration, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print(f"\n[FAST-WHISPER] All translations finished in: {int(hours)}:{int(minutes):02}:{seconds:06.3f}\n", flush=True)
 
 if __name__ == "__main__":
+    if len(sys.argv) >= 3 and sys.argv[1] == "--batch":
+        ctx = int(sys.argv[3]) if len(sys.argv) >= 4 else 3
+        if len(sys.argv) >= 5:
+            MODEL = sys.argv[4]
+        setup_ollama()
+        process_batch(sys.argv[2], ctx)
+        stop_ollama()
+        sys.exit(0)
     if len(sys.argv) >= 3:
         ctx = int(sys.argv[3]) if len(sys.argv) >= 4 else 3
         if len(sys.argv) >= 5:
