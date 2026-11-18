@@ -68,7 +68,7 @@ set "li=0"
 set /a li+=1
 if !li! gtr !file_count! goto FILE_LIST_DONE
 set "lf=!file[%li%]!"
-for %%F in ("!lf!") do set "lfn=%%~nF"
+for %%F in ("!lf!") do set "lfn=%%~nxF"
 echo   - !lfn!
 goto FILE_LIST_LOOP
 :FILE_LIST_DONE
