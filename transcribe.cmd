@@ -30,7 +30,11 @@ set "_ext=%~x1"
 
 :: Directory dropped? (batch mode handles skipping itself via --skip)
 set "IS_DIR=0"
-if exist "%~1\" set "IS_DIR=1"
+pushd "%~1" 2>nul
+if not errorlevel 1 (
+    set "IS_DIR=1"
+    popd
+)
 
 :: Collect all dropped files
 set "file_list="
