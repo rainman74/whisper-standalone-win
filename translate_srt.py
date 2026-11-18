@@ -38,6 +38,34 @@ def _start_server():
     print("[FAST-WHISPER] Ollama server did not respond in time.")
     return False
 
+def _model_present():
+    try:
+        r = requests.get(f"{OLLAMA_API}/api/tags", timeout=5)
+        models = r.json().get("models", [])
+        base = MODEL.split(":")[0]
+        for m in models:
+            name = m.get("name", "")
+            if name == MODEL or name.split(":")[0] == base:
+                return True
+        return False
+    except Exception:
+        return False
+
+def _ensure_model():
+    if _model_present():
+        return True
+    print(f"[FAST-WHISPER] Model [{MODEL}] not found - downloading ...", flush=True)
+    try:
+        rc = subprocess.run(["ollama", "pull", MODEL]).returncode
+    except Exception as e:
+        print(f"[FAST-WHISPER] Model download failed: {e}", flush=True)
+        rc = 1
+    if rc != 0 or not _model_present():
+        print(f"[FAST-WHISPER] Model [{MODEL}] is not available - run: ollama pull {MODEL}", flush=True)
+        return False
+    print(f"[FAST-WHISPER] Model [{MODEL}] downloaded.", flush=True)
+    return True
+
 def _preload_model():
     # Evict first so GPU layer settings are applied fresh on reload
     try:
@@ -77,6 +105,8 @@ def setup_ollama():
         stop_ollama()
         time.sleep(3)
     if not _start_server():
+        sys.exit(1)
+    if not _ensure_model():
         sys.exit(1)
     _preload_model()
     result = subprocess.run(["ollama", "ps"], capture_output=True, text=True)

@@ -8,7 +8,7 @@
 
 - Windows 10/11 x64
 - **Python 3.x** with `requests` for the Ollama-based translation (the wrappers run `pip install requests` if it is missing)
-- **Ollama** for the translation steps (modes 3-6 when a translation is needed) and the SRT translator: installed automatically if missing, but the models must be pulled once — `ollama pull mistral-nemo` (and `ollama pull translategemma:12b` for context option B)
+- **Ollama** for the translation steps (modes 3-6 when a translation is needed): installed automatically if missing; missing models are downloaded automatically on first use (internet required, uses `ollama pull`). Optional manual pre-pull: `ollama pull mistral-nemo` (and `ollama pull translategemma:12b` for context option B)
 - Free disk space for the Whisper model cache in `_models/` (several GB)
 - For CUDA: an NVIDIA GPU. `large-v2` needs at least 6 GB VRAM; running the Ollama DE translation on the same GPU (mistral-nemo about 7.1 GB, translategemma:12b about 8.1 GB for option B) needs at least 10 GB VRAM. CPU-only works but is much slower.
 
@@ -44,7 +44,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - SRT direction is chosen per file: `.EN.srt` → `.DE.srt`, `.DE.srt` → `.EN.srt`, plain `.srt` is treated as English → `.DE.srt`; existing target subtitles are skipped
 - Any other language suffix (e.g. `.FR.srt`, `.ES.srt`, `.YUE.srt`) is translated to **both** `<name>.DE.srt` and `<name>.EN.srt` — whichever of them is missing
 - A plain `<name>.srt` counts as the English version: dropping `<name>.DE.srt` is skipped when `<name>.srt` or `<name>.EN.srt` already exists
-- Ollama is installed automatically if missing; the models must be pulled once (see [Requirements](#requirements))
+- Ollama is installed automatically if missing; missing Ollama models are downloaded automatically on the first translation (internet required) — if the download fails, the run aborts with a clear message
 - Ollama is restarted with GPU-friendly settings (`OLLAMA_KV_CACHE_TYPE=q4_0`, `OLLAMA_FLASH_ATTENTION=1`) — this stops other running Ollama sessions
 - JSON and intermediate WAV files are removed automatically after each run
 - Multiple files: one Whisper run and one Ollama batch per invocation (no repeated model loading)
