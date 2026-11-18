@@ -28,7 +28,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - `[5]` Translate GERMAN: Whisper `--language de` → `<name>.DE.srt`, then Ollama translates DE→EN → `<name>.EN.srt` (context option B uses translategemma:12b)
 - `[6]` Translate ENGLISH: Whisper `--language en` → `<name>.EN.srt`, then Ollama translates EN→DE → `<name>.DE.srt`
 - `[7]` Vocal/background separation — outputs clean background WAV
-- `[8]` Download missing models — shown only when at least one of `tiny`, `base`, `small`, `medium`, `large-v2`, `large-v3` is incomplete; downloads all missing files (including `preprocessor_config.json` for large-v3) from Hugging Face
+- `[8]` Download Models — shown only when at least one of `tiny`, `base`, `small`, `medium`, `large-v2`, `large-v3` is incomplete; downloads all missing files (including `preprocessor_config.json` for large-v3) from Hugging Face
 
 **Existing subtitles are reused (modes 1–6):**
 - Existing `<name>.DE.srt` / `<name>.EN.srt` next to a media file are reused instead of running Whisper again.
