@@ -9,7 +9,7 @@
 - Windows 10/11 x64
 - **Python 3.x** with `requests` for the Ollama-based translation (the wrappers run `pip install requests` if it is missing)
 - **Ollama** for the translation steps (modes 3-6 when a translation is needed): installed automatically if missing; missing models are downloaded automatically on first use (internet required, uses `ollama pull`). Optional manual pre-pull: `ollama pull mistral-nemo` (and `ollama pull translategemma:12b` for context option B)
-- Free disk space for the Whisper model cache in `_models/` (several GB)
+- Free disk space for the Whisper model cache in `_models/` (large-v2 about 3.1 GB, tiny about 72 MB) — missing models are downloaded automatically from Hugging Face (`Systran/faster-whisper-*`) on first use (internet required)
 - For CUDA: an NVIDIA GPU. `large-v2` needs at least 6 GB VRAM; running the Ollama DE translation on the same GPU (mistral-nemo about 7.1 GB, translategemma:12b about 8.1 GB for option B) needs at least 10 GB VRAM. CPU-only works but is much slower.
 
 The Whisper executable itself is fully standalone — Python and Ollama are only needed for the translation features.

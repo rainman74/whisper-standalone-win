@@ -108,6 +108,8 @@ if errorlevel 1 goto MODE_AUTO
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --compute_type float16 --vad_method pyannote_v3 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
 if defined WORKLIST_EMPTY goto END
+call :ENSURE_WHISPER_MODEL large-v2
+if errorlevel 1 goto WHISPER_MODEL_ABORT
 echo.
 echo [FAST-WHISPER] Starting transcription (language auto-detect) ...
 echo.
@@ -127,6 +129,8 @@ goto CLEANUP_JSON
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --compute_type float16 --vad_method pyannote_v3 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
 if defined WORKLIST_EMPTY goto END
+call :ENSURE_WHISPER_MODEL large-v2
+if errorlevel 1 goto WHISPER_MODEL_ABORT
 echo.
 echo [FAST-WHISPER] Starting transcription with speaker recognition ...
 echo.
@@ -229,6 +233,9 @@ if !job_count! gtr 0 (
 )
 
 set "LANG_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --compute_type float16 --vad_method pyannote_v3 --language !LANG! --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
+
+call :ENSURE_WHISPER_MODEL large-v2
+if errorlevel 1 goto WHISPER_MODEL_ABORT
 
 set "whisper_done="
 if !wcount! gtr 0 (
@@ -352,6 +359,8 @@ goto CLEANUP_JSON
 :: ============================================================
 :MODE_BACKGROUND
 set "BG_FLAGS=--beep_off -pp -o source --standard -f srt -m tiny --ff_vocal_extract mdx_kim2 --ff_dump --mdx_chunk 15 --print_progress"
+call :ENSURE_WHISPER_MODEL tiny
+if errorlevel 1 goto WHISPER_MODEL_ABORT
 
 set "i=0"
 :BACKGROUND_LOOP
@@ -790,6 +799,61 @@ goto CLEANUP_EXIT_LOOP
 echo.
 echo [FAST-WHISPER] Cancelled by user.
 if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
+goto END
+
+:: ============================================================
+::  Subroutine: ensure a faster-whisper model exists (download from HF)
+:: ============================================================
+:ENSURE_WHISPER_MODEL
+set "WMODEL=%~1"
+set "WMODELDIR=%DP%_models\faster-whisper-!WMODEL!"
+set "WMODELURL=https://huggingface.co/Systran/faster-whisper-!WMODEL!/resolve/main"
+set "WMISSING="
+if not exist "!WMODELDIR!\model.bin" set "WMISSING=1"
+if not exist "!WMODELDIR!\config.json" set "WMISSING=1"
+if not exist "!WMODELDIR!\tokenizer.json" set "WMISSING=1"
+if not exist "!WMODELDIR!\vocabulary.txt" if not exist "!WMODELDIR!\vocabulary.json" set "WMISSING=1"
+if not defined WMISSING for %%A in ("!WMODELDIR!\model.bin") do if %%~zA LSS 1048576 set "WMISSING=1"
+if not defined WMISSING exit /b 0
+echo.
+echo [FAST-WHISPER] Whisper model "!WMODEL!" not found - downloading ...
+if not exist "!WMODELDIR!\" mkdir "!WMODELDIR!" >nul 2>&1
+if not exist "!WMODELDIR!\config.json" (
+    echo [FAST-WHISPER]   downloading config.json ...
+    curl -L --fail -o "!WMODELDIR!\config.json" "!WMODELURL!/config.json"
+    if errorlevel 1 goto WMODEL_FAILED
+)
+if not exist "!WMODELDIR!\model.bin" (
+    echo [FAST-WHISPER]   downloading model.bin - this can take a while ...
+    curl -L --fail -o "!WMODELDIR!\model.bin" "!WMODELURL!/model.bin"
+    if errorlevel 1 goto WMODEL_FAILED
+)
+if not exist "!WMODELDIR!\tokenizer.json" (
+    echo [FAST-WHISPER]   downloading tokenizer.json ...
+    curl -L --fail -o "!WMODELDIR!\tokenizer.json" "!WMODELURL!/tokenizer.json"
+    if errorlevel 1 goto WMODEL_FAILED
+)
+if exist "!WMODELDIR!\vocabulary.txt" goto WMODEL_READY
+if exist "!WMODELDIR!\vocabulary.json" goto WMODEL_READY
+echo [FAST-WHISPER]   downloading vocabulary.txt ...
+curl -L --fail -o "!WMODELDIR!\vocabulary.txt" "!WMODELURL!/vocabulary.txt"
+if not errorlevel 1 goto WMODEL_READY
+echo [FAST-WHISPER]   downloading vocabulary.json ...
+curl -L --fail -o "!WMODELDIR!\vocabulary.json" "!WMODELURL!/vocabulary.json"
+if errorlevel 1 goto WMODEL_FAILED
+del "!WMODELDIR!\vocabulary.txt" >nul 2>&1
+goto WMODEL_READY
+:WMODEL_FAILED
+echo [FAST-WHISPER] Whisper model download failed: !WMODEL!
+exit /b 1
+:WMODEL_READY
+echo [FAST-WHISPER] Whisper model "!WMODEL!" ready.
+exit /b 0
+
+:WHISPER_MODEL_ABORT
+echo.
+echo [FAST-WHISPER] Whisper model is not available - aborting.
+echo.
 goto END
 
 :: ============================================================
