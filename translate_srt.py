@@ -458,6 +458,7 @@ def process_batch(job_file, ctx=3):
         TARGET_LANG = target
         prefix = "" if idx == 1 else "\n"
         print(f"{prefix}[FAST-WHISPER] Translating ({idx} of {total}): {os.path.basename(src)}", flush=True)
+        print(flush=True)
         if not os.path.exists(src):
             print(f"[FAST-WHISPER] Source subtitle missing: {os.path.basename(src)}", flush=True)
             continue
