@@ -58,7 +58,7 @@ if /i "%_ext%"==".srt" goto MODE_SRT_TRANSLATE
 :: ============================================================
 :MAIN_MENU
 set "HAS_MISSING_MODELS="
-for %%M in (large-v2 large-v3 medium tiny) do (
+for %%M in (tiny base small medium large-v2 large-v3) do (
     call :IS_MODEL_COMPLETE %%M
     if errorlevel 1 set "HAS_MISSING_MODELS=1"
 )
@@ -822,14 +822,46 @@ goto END
 :: ============================================================
 ::  Subroutine: ensure a faster-whisper model exists (download from HF)
 :: ============================================================
+:GET_MODEL_FILES
+set "MFILES="
+if /i "%~1"=="tiny" set "MFILES=config.json model.bin tokenizer.json vocabulary.txt"
+if /i "%~1"=="base" set "MFILES=config.json model.bin tokenizer.json vocabulary.txt"
+if /i "%~1"=="small" set "MFILES=config.json model.bin tokenizer.json vocabulary.txt"
+if /i "%~1"=="medium" set "MFILES=config.json model.bin tokenizer.json vocabulary.txt"
+if /i "%~1"=="large-v2" set "MFILES=config.json model.bin tokenizer.json vocabulary.txt"
+if /i "%~1"=="large-v3" set "MFILES=config.json model.bin tokenizer.json vocabulary.json preprocessor_config.json"
+exit /b
+
+:IS_FILE_OK
+set "FF=%~1"
+if not exist "!FF!" exit /b 1
+for %%A in ("!FF!") do if %%~zA==0 exit /b 1
+if /i "%~nx1"=="model.bin" for %%A in ("!FF!") do if %%~zA LSS 1048576 exit /b 1
+exit /b 0
+
 :IS_MODEL_COMPLETE
 set "CMODEL=%~1"
 set "CMODELDIR=%DP%_models\faster-whisper-!CMODEL!"
-if not exist "!CMODELDIR!\model.bin" exit /b 1
-if not exist "!CMODELDIR!\config.json" exit /b 1
-if not exist "!CMODELDIR!\tokenizer.json" exit /b 1
-if not exist "!CMODELDIR!\vocabulary.txt" if not exist "!CMODELDIR!\vocabulary.json" exit /b 1
-for %%A in ("!CMODELDIR!\model.bin") do if %%~zA LSS 1048576 exit /b 1
+call :GET_MODEL_FILES !CMODEL!
+if not defined MFILES exit /b 1
+set "MCOMPLETE=1"
+for %%F in (!MFILES!) do (
+    call :IS_FILE_OK "!CMODELDIR!\%%F"
+    if errorlevel 1 set "MCOMPLETE="
+)
+if not defined MCOMPLETE exit /b 1
+exit /b 0
+
+:DOWNLOAD_MODEL_FILE
+set "DFILE=%~1"
+if exist "!WMODELDIR!\!DFILE!" for %%A in ("!WMODELDIR!\!DFILE!") do if %%~zA GTR 0 exit /b 0
+echo [FAST-WHISPER]   downloading !DFILE! ...
+curl -L --fail -o "!WMODELDIR!\!DFILE!" "!WMODELURL!/!DFILE!"
+if errorlevel 1 (
+    echo [FAST-WHISPER]   download failed: !DFILE!
+    if exist "!WMODELDIR!\!DFILE!" del "!WMODELDIR!\!DFILE!" >nul 2>&1
+    exit /b 1
+)
 exit /b 0
 
 :ENSURE_WHISPER_MODEL
@@ -838,46 +870,31 @@ set "WMODELDIR=%DP%_models\faster-whisper-!WMODEL!"
 set "WMODELURL=https://huggingface.co/Systran/faster-whisper-!WMODEL!/resolve/main"
 call :IS_MODEL_COMPLETE !WMODEL!
 if not errorlevel 1 exit /b 0
+call :GET_MODEL_FILES !WMODEL!
+if not defined MFILES (
+    echo [FAST-WHISPER] Unknown Whisper model: !WMODEL!
+    exit /b 1
+)
 echo.
-echo [FAST-WHISPER] Whisper model "!WMODEL!" not found - downloading ...
+echo [FAST-WHISPER] Whisper model "!WMODEL!" is incomplete - downloading ...
+if not exist "%DP%_models\" mkdir "%DP%_models%" >nul 2>&1
 if not exist "!WMODELDIR!\" mkdir "!WMODELDIR!" >nul 2>&1
-if not exist "!WMODELDIR!\config.json" (
-    echo [FAST-WHISPER]   downloading config.json ...
-    curl -L --fail -o "!WMODELDIR!\config.json" "!WMODELURL!/config.json"
-    if errorlevel 1 goto WMODEL_FAILED
+set "MDLFAIL="
+for %%F in (!MFILES!) do (
+    call :DOWNLOAD_MODEL_FILE "%%F"
+    if errorlevel 1 set "MDLFAIL=1"
 )
-if not exist "!WMODELDIR!\model.bin" (
-    echo [FAST-WHISPER]   downloading model.bin - this can take a while ...
-    curl -L --fail -o "!WMODELDIR!\model.bin" "!WMODELURL!/model.bin"
-    if errorlevel 1 goto WMODEL_FAILED
+if defined MDLFAIL (
+    echo [FAST-WHISPER] Whisper model download failed: !WMODEL!
+    exit /b 1
 )
-if not exist "!WMODELDIR!\tokenizer.json" (
-    echo [FAST-WHISPER]   downloading tokenizer.json ...
-    curl -L --fail -o "!WMODELDIR!\tokenizer.json" "!WMODELURL!/tokenizer.json"
-    if errorlevel 1 goto WMODEL_FAILED
-)
-if exist "!WMODELDIR!\vocabulary.txt" goto WMODEL_READY
-if exist "!WMODELDIR!\vocabulary.json" goto WMODEL_READY
-echo [FAST-WHISPER]   downloading vocabulary.txt ...
-curl -L --fail -o "!WMODELDIR!\vocabulary.txt" "!WMODELURL!/vocabulary.txt"
-if not errorlevel 1 goto WMODEL_READY
-echo [FAST-WHISPER]   downloading vocabulary.json ...
-curl -L --fail -o "!WMODELDIR!\vocabulary.json" "!WMODELURL!/vocabulary.json"
-if errorlevel 1 goto WMODEL_FAILED
-del "!WMODELDIR!\vocabulary.txt" >nul 2>&1
-goto WMODEL_READY
-:WMODEL_FAILED
-echo [FAST-WHISPER] Whisper model download failed: !WMODEL!
-exit /b 1
-:WMODEL_READY
 echo [FAST-WHISPER] Whisper model "!WMODEL!" ready.
 exit /b 0
-
 :MODE_DOWNLOAD_MODELS
 echo.
 echo [FAST-WHISPER] Checking faster-whisper models ...
 set "DMFAIL=0"
-for %%M in (large-v2 large-v3 medium tiny) do (
+for %%M in (tiny base small medium large-v2 large-v3) do (
     call :ENSURE_WHISPER_MODEL %%M
     if errorlevel 1 set "DMFAIL=1"
 )

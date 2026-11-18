@@ -9,7 +9,7 @@
 - Windows 10/11 x64
 - **Python 3.x** with `requests` for the Ollama-based translation (the wrappers run `pip install requests` if it is missing)
 - **Ollama** for the translation steps (modes 3-6 when a translation is needed): installed automatically if missing; missing models are downloaded automatically on first use (internet required, uses `ollama pull`). Optional manual pre-pull: `ollama pull mistral-nemo` (and `ollama pull translategemma:12b` for context option B)
-- Free disk space for the Whisper model cache in `_models/` (large-v2/large-v3 about 3.1 GB each, medium about 1.5 GB, tiny about 72 MB) — missing models are downloaded automatically from Hugging Face (`Systran/faster-whisper-*`) on first use or via menu `[8]` (internet required)
+- Free disk space for the Whisper model cache in `_models/` (tiny about 72 MB, base about 145 MB, small about 484 MB, medium about 1.5 GB, large-v2/large-v3 about 3.1 GB each) — missing models are downloaded automatically from Hugging Face (`Systran/faster-whisper-*`) on first use or via menu `[8]` (internet required)
 - For CUDA: an NVIDIA GPU. `large-v2` needs at least 6 GB VRAM; running the Ollama DE translation on the same GPU (mistral-nemo about 7.1 GB, translategemma:12b about 8.1 GB for option B) needs at least 10 GB VRAM. CPU-only works but is much slower.
 
 The Whisper executable itself is fully standalone — Python and Ollama are only needed for the translation features.
@@ -28,7 +28,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - `[5]` Translate GERMAN: Whisper `--language de` → `<name>.DE.srt`, then Ollama translates DE→EN → `<name>.EN.srt` (context option B uses translategemma:12b)
 - `[6]` Translate ENGLISH: Whisper `--language en` → `<name>.EN.srt`, then Ollama translates EN→DE → `<name>.DE.srt`
 - `[7]` Vocal/background separation — outputs clean background WAV
-- `[8]` Download missing models — shown only when at least one of `large-v2`, `large-v3`, `medium`, `tiny` is incomplete; downloads them from Hugging Face
+- `[8]` Download missing models — shown only when at least one of `tiny`, `base`, `small`, `medium`, `large-v2`, `large-v3` is incomplete; downloads all missing files (including `preprocessor_config.json` for large-v3) from Hugging Face
 
 **Existing subtitles are reused (modes 1–6):**
 - Existing `<name>.DE.srt` / `<name>.EN.srt` next to a media file are reused instead of running Whisper again.
@@ -46,7 +46,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - Any other language suffix (e.g. `.FR.srt`, `.ES.srt`, `.YUE.srt`) is translated to **both** `<name>.DE.srt` and `<name>.EN.srt` — whichever of them is missing
 - A plain `<name>.srt` counts as the English version: dropping `<name>.DE.srt` is skipped when `<name>.srt` or `<name>.EN.srt` already exists
 - Ollama is installed automatically if missing; missing Ollama models are downloaded automatically on the first translation (internet required) — if the download fails, the run aborts with a clear message
-- Missing faster-whisper models (`large-v2` for modes 1–6, `tiny` for mode 7) are downloaded automatically from Hugging Face (`Systran/faster-whisper-*`) on first use; menu `[8]` downloads all four (`large-v2`, `large-v3`, `medium`, `tiny`) if any is incomplete. A failed download aborts with a clear message
+- Missing faster-whisper models (`large-v2` for modes 1–6, `tiny` for mode 7) are downloaded automatically from Hugging Face (`Systran/faster-whisper-*`) on first use; menu `[8]` downloads all six (`tiny`, `base`, `small`, `medium`, `large-v2`, `large-v3`) if any is incomplete — always the complete file set per model (`preprocessor_config.json` included for large-v3). A failed download aborts with a clear message
 - Ollama is restarted with GPU-friendly settings (`OLLAMA_KV_CACHE_TYPE=q4_0`, `OLLAMA_FLASH_ATTENTION=1`) — this stops other running Ollama sessions
 - JSON and intermediate WAV files are removed automatically after each run
 - Multiple files: one Whisper run and one Ollama batch per invocation (no repeated model loading)
