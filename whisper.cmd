@@ -57,6 +57,18 @@ if /i "%_ext%"==".srt" goto MODE_SRT_TRANSLATE
 ::  Banner + Menu
 :: ============================================================
 :MAIN_MENU
+set "HAS_MISSING_MODELS="
+for %%M in (large-v2 large-v3 medium tiny) do (
+    call :IS_MODEL_COMPLETE %%M
+    if errorlevel 1 set "HAS_MISSING_MODELS=1"
+)
+if defined HAS_MISSING_MODELS (
+    set "MENU_KEYS=12345678E"
+    set "MENU_PROMPT=  Select [1-8, E = Exit]: "
+) else (
+    set "MENU_KEYS=1234567E"
+    set "MENU_PROMPT=  Select [1-7, E = Exit]: "
+)
 cls
 echo.
 echo      8""""                                    8   8  8                                       8   8 8   8 8
@@ -88,11 +100,17 @@ echo   [4]  Transcribe ENGLISH       (language forced)
 echo   [5]  Translate GERMAN         (Whisper DE, Ollama to EN)
 echo   [6]  Translate ENGLISH        (Whisper EN, Ollama to DE)
 echo   [7]  Background Extraction    (remove vocals)
+if defined HAS_MISSING_MODELS echo   [8]  Download missing models
 echo.
-choice /c 1234567E /n /m "  Select [1-7, E = Exit]: "
+choice /c !MENU_KEYS! /n /m "!MENU_PROMPT!"
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 
-if errorlevel 8 goto END
+if defined HAS_MISSING_MODELS (
+    if errorlevel 9 goto END
+    if errorlevel 8 goto MODE_DOWNLOAD_MODELS
+) else (
+    if errorlevel 8 goto END
+)
 if errorlevel 7 goto MODE_BACKGROUND
 if errorlevel 6 goto MODE_TRANSLATE_EN
 if errorlevel 5 goto MODE_TRANSLATE_DE
@@ -804,17 +822,22 @@ goto END
 :: ============================================================
 ::  Subroutine: ensure a faster-whisper model exists (download from HF)
 :: ============================================================
+:IS_MODEL_COMPLETE
+set "CMODEL=%~1"
+set "CMODELDIR=%DP%_models\faster-whisper-!CMODEL!"
+if not exist "!CMODELDIR!\model.bin" exit /b 1
+if not exist "!CMODELDIR!\config.json" exit /b 1
+if not exist "!CMODELDIR!\tokenizer.json" exit /b 1
+if not exist "!CMODELDIR!\vocabulary.txt" if not exist "!CMODELDIR!\vocabulary.json" exit /b 1
+for %%A in ("!CMODELDIR!\model.bin") do if %%~zA LSS 1048576 exit /b 1
+exit /b 0
+
 :ENSURE_WHISPER_MODEL
 set "WMODEL=%~1"
 set "WMODELDIR=%DP%_models\faster-whisper-!WMODEL!"
 set "WMODELURL=https://huggingface.co/Systran/faster-whisper-!WMODEL!/resolve/main"
-set "WMISSING="
-if not exist "!WMODELDIR!\model.bin" set "WMISSING=1"
-if not exist "!WMODELDIR!\config.json" set "WMISSING=1"
-if not exist "!WMODELDIR!\tokenizer.json" set "WMISSING=1"
-if not exist "!WMODELDIR!\vocabulary.txt" if not exist "!WMODELDIR!\vocabulary.json" set "WMISSING=1"
-if not defined WMISSING for %%A in ("!WMODELDIR!\model.bin") do if %%~zA LSS 1048576 set "WMISSING=1"
-if not defined WMISSING exit /b 0
+call :IS_MODEL_COMPLETE !WMODEL!
+if not errorlevel 1 exit /b 0
 echo.
 echo [FAST-WHISPER] Whisper model "!WMODEL!" not found - downloading ...
 if not exist "!WMODELDIR!\" mkdir "!WMODELDIR!" >nul 2>&1
@@ -849,6 +872,23 @@ exit /b 1
 :WMODEL_READY
 echo [FAST-WHISPER] Whisper model "!WMODEL!" ready.
 exit /b 0
+
+:MODE_DOWNLOAD_MODELS
+echo.
+echo [FAST-WHISPER] Checking faster-whisper models ...
+set "DMFAIL=0"
+for %%M in (large-v2 large-v3 medium tiny) do (
+    call :ENSURE_WHISPER_MODEL %%M
+    if errorlevel 1 set "DMFAIL=1"
+)
+echo.
+if "!DMFAIL!"=="1" (
+    echo [FAST-WHISPER] Some models could not be downloaded - see messages above.
+) else (
+    echo [FAST-WHISPER] All faster-whisper models are available.
+)
+echo.
+goto END
 
 :WHISPER_MODEL_ABORT
 echo.
