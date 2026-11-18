@@ -727,7 +727,7 @@ goto CTX_INPUT
 :CHECK_PYTHON
 where python >nul 2>nul
 if errorlevel 1 goto PYTHON_MISSING
-python -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >nul 2>nul
+python -c "import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)" >nul 2>nul
 if errorlevel 1 goto PYTHON_MISSING
 exit /b
 
