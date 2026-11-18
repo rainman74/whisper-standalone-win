@@ -154,6 +154,5 @@ exit /b
 
 :TSRT_END
 echo.
-echo [FAST-WHISPER] Press any key to continue . . .
-pause >nul
+pause
 exit /b

@@ -493,6 +493,5 @@ goto CLEANUP_EXIT_LOOP
 :: ============================================================
 :END
 echo.
-echo [FAST-WHISPER] Press any key to continue . . .
-pause >nul
+pause
 exit /b
