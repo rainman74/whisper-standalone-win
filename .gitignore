@@ -11,6 +11,6 @@ whisper-nvidia-dll.zip
 *.srt
 *.json
 *.mp4
-# Bundled model assets (pyannote/wespeaker) must be versioned
+# Bundled model assets: everything under this folder is versioned (unlike *.bin in _models)
 !_xxl_data/faster_whisper/assets/
 !_xxl_data/faster_whisper/assets/**
