@@ -35,23 +35,15 @@ echo.
 echo   Key  Benefit                        Speed
 echo   ---  -----------------------------  --------------
 echo   0    No context                     Fastest
-echo   1    Minimal coherence              Very fast
-echo   2    Consistent names and address   Fast
 echo   3    Good compromise                Moderate
-echo   4    Stronger context               Slower
-echo   5    Very consistent style          Slow
 echo   A    Full entity tracking (10)      Slowest
-echo   B    Full entity tracking (Gemma)   Slowest
+echo   B    Full entity tracking (Gemma)   Best
 echo.
-choice /c 012345AEB /n /m "  Context blocks [0-5, A = 10, B = Gemma, E = Abort]: "
-if errorlevel 9 (set "CTX=10" & set "MODEL=translategemma:12b" & goto CTX_DONE)
-if errorlevel 8 goto TSRT_END
-if errorlevel 7 (set "CTX=10" & goto CTX_DONE)
-if errorlevel 6 (set "CTX=5"  & goto CTX_DONE)
-if errorlevel 5 (set "CTX=4"  & goto CTX_DONE)
-if errorlevel 4 (set "CTX=3"  & goto CTX_DONE)
-if errorlevel 3 (set "CTX=2"  & goto CTX_DONE)
-if errorlevel 2 (set "CTX=1"  & goto CTX_DONE)
+choice /c 03ABE /n /m "  Context blocks [0, 3, A = 10, B = Gemma, E = Abort]: "
+if errorlevel 5 goto TSRT_END
+if errorlevel 4 (set "CTX=10" & set "MODEL=translategemma:12b" & goto CTX_DONE)
+if errorlevel 3 (set "CTX=10" & goto CTX_DONE)
+if errorlevel 2 (set "CTX=3"  & goto CTX_DONE)
 if errorlevel 1 (set "CTX=0"  & goto CTX_DONE)
 :CTX_DONE
 
