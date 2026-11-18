@@ -21,7 +21,7 @@ The Whisper executable itself is fully standalone — Python and Ollama are only
 Drag-and-drop launcher for video and audio files with an interactive mode menu.
 
 **Modes:**
-- `[1]` Auto transcription (language auto-detect) → `<name>.DE.srt` / `<name>.EN.srt` for German/English, otherwise `<name>.srt`
+- `[1]` Auto transcription (language auto-detect) → `<name>.<LANG>.srt` (detected language in uppercase, e.g. `.DE.srt`, `.EN.srt`, `.FR.srt`)
 - `[2]` Auto transcription + speaker diarization → same language-based naming
 - `[3]` German transcription (language forced) → `<name>.DE.srt`
 - `[4]` English transcription (language forced) → `<name>.EN.srt`
@@ -33,8 +33,8 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - Existing `<name>.DE.srt` / `<name>.EN.srt` next to a media file are reused instead of running Whisper again.
 - If the subtitle a mode needs is missing but the other language exists, it is produced via Ollama translation (both directions: DE→EN and EN→DE).
 - If all subtitles a mode needs already exist, the file is skipped (`[FAST-WHISPER] Subtitle already exists ...`) — nothing is re-transcribed.
-- Modes 1/2 skip a file when `<name>.srt`, `<name>.DE.srt` or `<name>.EN.srt` already exists.
-- Auto modes name the output by detected language: `de` → `<name>.DE.srt`, `en` → `<name>.EN.srt`, other languages stay `<name>.srt`.
+- Modes 1/2 skip a file when `<name>.srt` or any `<name>.<LANG>.srt` (e.g. `.DE.srt`, `.EN.srt`, `.FR.srt`) already exists.
+- Auto modes write the detected language as an uppercase suffix: `de` → `<name>.DE.srt`, `en` → `<name>.EN.srt`, `fr` → `<name>.FR.srt`, etc.
 - In modes 3–6 a plain `<name>.srt` is not reused (it only counts as the English version on SRT drops).
 - Folder drops: media files are found recursively; sidecar files (`*.srt`, `*.json`, `*.wav`, …) are ignored.
 - Whisper runs once for all files that need transcription (model loaded once per run); Ollama translations of all files run in one batch (server/model loaded once per run).

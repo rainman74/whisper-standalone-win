@@ -521,6 +521,7 @@ set "have="
 if exist "!bfp!!bfn!.srt" set "have=!bfn!.srt"
 if exist "!bfp!!bfn!.DE.srt" set "have=!bfn!.DE.srt"
 if exist "!bfp!!bfn!.EN.srt" set "have=!bfn!.EN.srt"
+if not defined have if exist "!bfp!!bfn!.*.srt" set "have=!bfn!.*.srt"
 if defined have (
     echo [FAST-WHISPER] Subtitle already exists: !have!
     set /a skip_count+=1
@@ -568,9 +569,21 @@ if exist "!rfp!!rfn!.json" (
         set "lang=!lv!"
     )
 )
-if /i "!lang!"=="de" move /y "!rfp!!rfn!.srt" "!rfp!!rfn!.DE.srt" >nul
-if /i "!lang!"=="en" move /y "!rfp!!rfn!.srt" "!rfp!!rfn!.EN.srt" >nul
+call :TO_UPPER
+if defined ULANG if exist "!rfp!!rfn!.srt" move /y "!rfp!!rfn!.srt" "!rfp!!rfn!.!ULANG!.srt" >nul
 goto RENAME_OUTPUT_LOOP
+
+:TO_UPPER
+set "ULANG="
+set "l1=!lang:~0,1!"
+set "l2=!lang:~1,1!"
+set "l3=!lang:~2,1!"
+for %%C in (!l1! !l2! !l3!) do (
+    for %%U in (A B C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
+        if /i "%%C"=="%%U" set "ULANG=!ULANG!%%U"
+    )
+)
+exit /b
 
 :RENAME_DIR_OUTPUT
 if not defined DIR_PATH exit /b
@@ -586,8 +599,9 @@ for /r %%J in (*.json) do (
         set "lv=!lv:"=!"
         set "dlang=!lv!"
     )
-    if /i "!dlang!"=="de" if exist "!dpath!!dname!.srt" move /y "!dpath!!dname!.srt" "!dpath!!dname!.DE.srt" >nul
-    if /i "!dlang!"=="en" if exist "!dpath!!dname!.srt" move /y "!dpath!!dname!.srt" "!dpath!!dname!.EN.srt" >nul
+    set "lang=!dlang!"
+    call :TO_UPPER
+    if defined ULANG if exist "!dpath!!dname!.srt" move /y "!dpath!!dname!.srt" "!dpath!!dname!.!ULANG!.srt" >nul
 )
 popd
 exit /b
