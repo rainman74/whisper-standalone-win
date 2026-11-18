@@ -8,6 +8,7 @@ ytdlp_updates.json
 *.srt
 *.json
 !_models/**/*.json
+!_xxl_data/**/*.json
 *.mp4
 _models/**/*.bin
 _xxl_data/torch/lib/torch_*.dll
