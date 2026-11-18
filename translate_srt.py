@@ -381,6 +381,8 @@ def process_srt(input_file, output_file, ctx=3):
 if __name__ == "__main__":
     if len(sys.argv) >= 3:
         ctx = int(sys.argv[3]) if len(sys.argv) >= 4 else 3
+        if len(sys.argv) >= 5:
+            MODEL = sys.argv[4]
         setup_ollama()
         process_srt(sys.argv[1], sys.argv[2], ctx)
         stop_ollama()

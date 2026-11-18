@@ -3,6 +3,9 @@ setlocal enabledelayedexpansion
 
 set "DP=%~dp0"
 
+:: Default translation model (context option B switches to translategemma:12b)
+set "MODEL=mistral-nemo"
+
 if "%~1"=="" (
     echo.
     echo  No file detected.
@@ -38,8 +41,10 @@ echo   3    Good compromise                Moderate
 echo   4    Stronger context               Slower
 echo   5    Very consistent style          Slow
 echo   A    Full entity tracking (10)      Slowest
+echo   B    Full entity tracking (Gemma)   Slowest
 echo.
-choice /c 012345AE /n /m "  Context blocks [0-5, A = 10, E = Abort]: "
+choice /c 012345AEB /n /m "  Context blocks [0-5, A = 10, B = Gemma, E = Abort]: "
+if errorlevel 9 (set "CTX=10" & set "MODEL=translategemma:12b" & goto CTX_DONE)
 if errorlevel 8 goto TSRT_END
 if errorlevel 7 (set "CTX=10" & goto CTX_DONE)
 if errorlevel 6 (set "CTX=5"  & goto CTX_DONE)
@@ -88,7 +93,7 @@ echo  Translating: !srt_base!.srt  --^>  !out_base!.DE.srt
 echo.
 
 if exist "!out_file!" del "!out_file!" >nul 2>&1
-python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX!
+python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX! "!MODEL!"
 if errorlevel 1 (
     echo  [ERROR] Translation failed - exit code !errorlevel!
 ) else (

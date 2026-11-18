@@ -18,6 +18,9 @@ if "%~1"=="" (
 :: Tool path
 set "DP=%~dp0"
 
+:: Default translation model (context option B switches to translategemma:12b)
+set "MODEL=mistral-nemo"
+
 :: Save extension of first file BEFORE shift consumes the args
 set "_ext=%~x1"
 
@@ -188,7 +191,7 @@ if exist "!src_path!!src_name!.DE.srt" del "!src_path!!src_name!.DE.srt" >nul 2>
 echo.
 echo  Starting German translation via Ollama ...
 echo.
-python "%DP%translate_srt.py" "!src_path!!src_name!.EN.srt" "!src_path!!src_name!.DE.srt" !CTX!
+python "%DP%translate_srt.py" "!src_path!!src_name!.EN.srt" "!src_path!!src_name!.DE.srt" !CTX! "!MODEL!"
 if errorlevel 1 (
     echo  [ERROR] German translation failed - exit code !errorlevel!
     goto TRANSLATE_NEXT
@@ -299,7 +302,7 @@ echo  Translating: !srt_base!.srt  --^>  !out_base!.DE.srt
 echo.
 
 if exist "!out_file!" del "!out_file!" >nul 2>&1
-python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX!
+python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX! "!MODEL!"
 if errorlevel 1 (
     echo  [ERROR] Translation failed - exit code !errorlevel!
 ) else (
@@ -393,8 +396,10 @@ echo   3    Good compromise                Moderate
 echo   4    Stronger context               Slower
 echo   5    Very consistent style          Slow
 echo   A    Full entity tracking (10)      Slowest
+echo   B    Full entity tracking (Gemma)   Slowest
 echo.
-choice /c 012345AE /n /m "  Context blocks [0-5, A = 10, E = Abort]: "
+choice /c 012345AEB /n /m "  Context blocks [0-5, A = 10, B = Gemma, E = Abort]: "
+if errorlevel 9 (set "CTX=10" & set "MODEL=translategemma:12b" & exit /b)
 if errorlevel 8 (set "CTX=E"  & exit /b)
 if errorlevel 7 (set "CTX=10" & exit /b)
 if errorlevel 6 (set "CTX=5"  & exit /b)
