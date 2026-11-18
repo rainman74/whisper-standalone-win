@@ -16,3 +16,5 @@ _xxl_data/torch/lib/cu*.dll
 _xxl_data/onnxruntime/capi/onnxruntime_providers_cuda.dll
 whisper-standalone-win-dlls.zip
 whisper-standalone-win.zip
+whisper-standalone-win-models-*.zip
+whisper-standalone-win-models-*.zip.*
