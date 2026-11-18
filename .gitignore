@@ -5,6 +5,7 @@ settings.json
 *.wav
 *.srt
 *.json
+!_models/**/*.json
 *.mp4
 _models/**/*.bin
 _xxl_data/torch/lib/torch_*.dll
