@@ -105,7 +105,7 @@ if errorlevel 1 goto MODE_AUTO
 ::  [1] AUTO
 :: ============================================================
 :MODE_AUTO
-set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
+set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --compute_type float16 --vad_method pyannote_v3 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
 if defined WORKLIST_EMPTY goto END
 echo.
@@ -124,7 +124,7 @@ goto CLEANUP_JSON
 ::  [2] AUTO + DIARIZE
 :: ============================================================
 :MODE_DIARIZE
-set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
+set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --compute_type float16 --vad_method pyannote_v3 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
 if defined WORKLIST_EMPTY goto END
 echo.
@@ -228,7 +228,7 @@ if !job_count! gtr 0 (
     if /i "!CTX!"=="E" goto CLEANUP_EXIT
 )
 
-set "LANG_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --language !LANG! --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
+set "LANG_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --compute_type float16 --vad_method pyannote_v3 --language !LANG! --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 
 set "whisper_done="
 if !wcount! gtr 0 (

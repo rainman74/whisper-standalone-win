@@ -47,6 +47,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - Ollama is restarted with GPU-friendly settings (`OLLAMA_KV_CACHE_TYPE=q4_0`, `OLLAMA_FLASH_ATTENTION=1`) — this stops other running Ollama sessions
 - JSON and intermediate WAV files are removed automatically after each run
 - Multiple files: one Whisper run and one Ollama batch per invocation (no repeated model loading)
+- Transcription defaults: `large-v2`, `--compute_type float16`, `--vad_method pyannote_v3` (CUDA auto-detected)
 - `Ctrl+C` cancels the current run: Whisper stderr is captured (no Python tracebacks) and the script ends with `[FAST-WHISPER] Cancelled by user.` (cmd still shows its own `Batchvorgang abbrechen (J/N)?` prompt — answer `N` so the script can clean up)
 
 ---
@@ -108,7 +109,8 @@ whisper.cmd "D:\Sub1.EN.srt" "D:\Sub2.EN.srt" "D:\Sub3.EN.srt"
 - **Temperature**: Use `--temperature 0.0` for deterministic, reproducible output. Avoid higher values unless the model is hallucinating repetitive phrases.
 - **Context**: `--condition_on_previous_text true` improves coherence across segments. Disable for highly noisy or fragmented audio where errors could propagate.
 - **Word timestamps**: `--word_timestamps true` enables per-word timing — required for subtitle re-segmentation and burn-in workflows.
-- **VAD**: Default `silero_v4_fw` is robust and requires no extra setup. Use `--vad_method pyannote_v3` for the best accuracy — requires a HuggingFace token and prior model download. Avoid `silero_v5_fw` (poor accuracy).
+- **VAD**: The wrappers use `--vad_method pyannote_v3` (best accuracy; models are bundled, no HuggingFace token needed). Its first load adds roughly 15 s per run — switch to `silero_v4_fw` if you prefer a faster start. Avoid `silero_v5_fw` (poor accuracy).
+- **Compute type**: `float16` gives the best GPU quality; the wrappers set `--compute_type float16` explicitly. `--device` is left on its default (CUDA when detected).
 - **Diarization**: `pyannote_v3.1` with `--diarize_device cuda` is the best option without license restrictions. `reverb_v2` is reportedly more accurate but restricted to personal non-profit use only.
 - **GPU**: CUDA is detected automatically. `large-v2` needs at least 6 GB VRAM; running the Ollama DE translation on the same GPU (mistral-nemo about 7.1 GB, translategemma:12b about 8.1 GB for option B) needs at least 10 GB VRAM.
 - **Ollama translation**: The wrapper sets `OLLAMA_KV_CACHE_TYPE=q4_0` and `OLLAMA_FLASH_ATTENTION=1` to keep mistral-nemo fully in GPU memory. The server is restarted automatically to apply these settings — this stops every running `ollama.exe`, so other Ollama work is interrupted.
