@@ -95,10 +95,10 @@ echo  -------------------------------------------------------
 echo.
 echo   [1]  Transcribe AUTO          (language auto-detect)
 echo   [2]  Transcribe AUTO+DIARIZE  (speaker recognition)
-echo   [3]  Transcribe GERMAN        (language forced)
-echo   [4]  Transcribe ENGLISH       (language forced)
-echo   [5]  Translate GERMAN         (Whisper DE, Ollama to EN)
-echo   [6]  Translate ENGLISH        (Whisper EN, Ollama to DE)
+echo   [3]  Transcribe GERMAN        (Whisper DE, language forced)
+echo   [4]  Transcribe ENGLISH       (Whisper DE, language forced)
+echo   [5]  Translate GERMAN         (Whisper DE, translate to EN)
+echo   [6]  Translate ENGLISH        (Whisper EN, translate to DE)
 echo   [7]  Background Extraction    (remove vocals)
 if defined HAS_MISSING_MODELS echo   [8]  Download Models          (shown only if a model is incomplete)
 echo.
@@ -134,7 +134,8 @@ echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! 2>>"!ERRLOG!"
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 goto TRANSCRIBE_FAIL
-if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" echo.
+if exist "!ERRLOG!" findstr /v /i /c:"Matplotlib is building the font cache" "!ERRLOG!"
 if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 call :RENAME_OUTPUT
 call :CHECK_OUTPUT
@@ -155,7 +156,8 @@ echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --diarize pyannote_v3.1 --diarize_device cuda 2>>"!ERRLOG!"
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 goto TRANSCRIBE_FAIL
-if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" echo.
+if exist "!ERRLOG!" findstr /v /i /c:"Matplotlib is building the font cache" "!ERRLOG!"
 if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 call :RENAME_OUTPUT
 call :CHECK_OUTPUT
@@ -264,11 +266,13 @@ if !wcount! gtr 0 (
     if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
     if errorlevel 1 (
         echo [FAST-WHISPER] Whisper transcription failed - exit code !errorlevel!
-        if exist "!ERRLOG!" type "!ERRLOG!"
+        if exist "!ERRLOG!" echo.
+        if exist "!ERRLOG!" findstr /v /i /c:"Matplotlib is building the font cache" "!ERRLOG!"
         if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
         goto MODE_SRTCHECK_TRANSLATE
     )
-    if exist "!ERRLOG!" type "!ERRLOG!"
+    if exist "!ERRLOG!" echo.
+    if exist "!ERRLOG!" findstr /v /i /c:"Matplotlib is building the font cache" "!ERRLOG!"
     if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
     set "did_work=1"
     set "whisper_done=1"
@@ -365,7 +369,8 @@ exit /b
 set "fail_code=!errorlevel!"
 echo.
 echo [FAST-WHISPER] Transcription failed - exit code !fail_code!
-if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" echo.
+if exist "!ERRLOG!" findstr /v /i /c:"Matplotlib is building the font cache" "!ERRLOG!"
 if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 echo.
 goto CLEANUP_JSON
@@ -406,11 +411,13 @@ echo.
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 (
     echo [FAST-WHISPER] Audio separation failed - exit code !errorlevel!
-    if exist "!ERRLOG!" type "!ERRLOG!"
+    if exist "!ERRLOG!" echo.
+    if exist "!ERRLOG!" findstr /v /i /c:"Matplotlib is building the font cache" "!ERRLOG!"
     if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
     goto BACKGROUND_NEXT
 )
-if exist "!ERRLOG!" type "!ERRLOG!"
+if exist "!ERRLOG!" echo.
+if exist "!ERRLOG!" findstr /v /i /c:"Matplotlib is building the font cache" "!ERRLOG!"
 if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 
 set "VOX_FILE=!src_path!!src_fullname!_mdx1.wav"
@@ -694,8 +701,8 @@ echo   Key  Benefit                        Speed
 echo   ---  -----------------------------  --------------
 echo   0    No context                     Fastest
 echo   3    Good compromise                Moderate
-echo   A    Full entity tracking (Mistral) Slowest
-echo   B    Full entity tracking (Gemma)   Best
+echo   A    Full entity tracking (Mistral) Slow
+echo   B    Full entity tracking (Gemma)   Slowest
 echo.
 :CTX_INPUT
 set "CTX_KEY="
