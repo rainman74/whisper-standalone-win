@@ -431,26 +431,44 @@ for %%F in ("!src!") do (
     set "srt_path=%%~dpF"
     set "srt_name=%%~nxF"
 )
-set "base=!srt_name!"
-set "target=DE"
-if /i "!srt_name:~-7!"==".DE.srt" (
-    set "base=!srt_name:~0,-7!"
-    set "target=EN"
-) else if /i "!srt_name:~-7!"==".EN.srt" (
-    set "base=!srt_name:~0,-7!"
-    set "target=DE"
+set "stem=!srt_name!"
+if /i "!stem:~-4!"==".srt" set "stem=!stem:~0,-4!"
+set "base=!stem!"
+set "ext="
+for %%A in ("!stem!") do (
+    set "base=%%~nA"
+    set "ext=%%~xA"
+)
+if /i "!ext!"==".DE" (
+    call :SRT_ADD_TARGET EN
+    goto SRT_LOOP_NEXT
+)
+if /i "!ext!"==".EN" (
+    call :SRT_ADD_TARGET DE
+    goto SRT_LOOP_NEXT
+)
+call :CHECK_LANG_EXT
+if defined LANGEXT (
+    call :SRT_ADD_TARGET DE
+    call :SRT_ADD_TARGET EN
 ) else (
-    set "base=!srt_name:~0,-4!"
-    set "target=DE"
+    set "base=!stem!"
+    call :SRT_ADD_TARGET DE
 )
-set "dst=!srt_path!!base!.!target!.srt"
+:SRT_LOOP_NEXT
+goto SRT_LOOP
+
+:SRT_ADD_TARGET
+set "tgt=%~1"
+set "tname=!base!.!tgt!.srt"
+set "dst=!srt_path!!tname!"
 if exist "!dst!" (
-    echo [FAST-WHISPER] Subtitle already exists: !base!.!target!.srt
-    goto SRT_LOOP_NEXT
+    echo [FAST-WHISPER] Subtitle already exists: !tname!
+    exit /b
 )
-if /i "!target!"=="EN" if exist "!srt_path!!base!.srt" (
+if /i "!tgt!"=="EN" if exist "!srt_path!!base!.srt" (
     echo [FAST-WHISPER] Subtitle already exists: !base!.srt - treated as English
-    goto SRT_LOOP_NEXT
+    exit /b
 )
 set "dup="
 set "di=0"
@@ -461,18 +479,26 @@ if /i "!jds[%di%]!"=="!dst!" set "dup=1"
 goto SRT_DUP_LOOP
 :SRT_DUP_DONE
 if defined dup (
-    echo [FAST-WHISPER] Duplicate target skipped: !base!.!target!.srt
-    goto SRT_LOOP_NEXT
+    echo [FAST-WHISPER] Duplicate target skipped: !tname!
+    exit /b
 )
 set /a jcount+=1
 set "jds[!jcount!]=!dst!"
-if /i "!target!"=="EN" (
+if /i "!tgt!"=="EN" (
     call :ADD_JOB "!src!" "!dst!" en
 ) else (
     call :ADD_JOB "!src!" "!dst!" de
 )
-:SRT_LOOP_NEXT
-goto SRT_LOOP
+exit /b
+
+:CHECK_LANG_EXT
+set "LANGEXT="
+set "el="
+if "!ext:~0,1!"=="." set "el=!ext:~1!"
+if not defined el exit /b
+echo !el!|findstr /r "^[A-Za-z][A-Za-z]$" >nul && set "LANGEXT=1"
+echo !el!|findstr /r "^[A-Za-z][A-Za-z][A-Za-z]$" >nul && set "LANGEXT=1"
+exit /b
 
 :SRT_SCAN_DONE
 if !job_count!==0 (

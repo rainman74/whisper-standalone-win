@@ -42,6 +42,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 **Features:**
 - Drop SRT files directly onto the script to skip the menu and go straight to translation — no Whisper involved
 - SRT direction is chosen per file: `.EN.srt` → `.DE.srt`, `.DE.srt` → `.EN.srt`, plain `.srt` is treated as English → `.DE.srt`; existing target subtitles are skipped
+- Any other language suffix (e.g. `.FR.srt`, `.ES.srt`, `.YUE.srt`) is translated to **both** `<name>.DE.srt` and `<name>.EN.srt` — whichever of them is missing
 - A plain `<name>.srt` counts as the English version: dropping `<name>.DE.srt` is skipped when `<name>.srt` or `<name>.EN.srt` already exists
 - Ollama is installed automatically if missing; the models must be pulled once (see [Requirements](#requirements))
 - Ollama is restarted with GPU-friendly settings (`OLLAMA_KV_CACHE_TYPE=q4_0`, `OLLAMA_FLASH_ATTENTION=1`) — this stops other running Ollama sessions
