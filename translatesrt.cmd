@@ -52,7 +52,6 @@ if errorlevel 1 (set "CTX=0"  & goto CTX_DONE)
 :: ============================================================
 echo.
 echo  Checking Ollama ...
-echo.
 
 call :OLLAMA_SETUP
 

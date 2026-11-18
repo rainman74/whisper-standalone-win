@@ -47,14 +47,12 @@ if /i "%_ext%"==".srt" goto MODE_SRT_TRANSLATE
 :: ============================================================
 cls
 echo.
-echo.
 echo      8""""                                    8   8  8                                       8   8 8   8 8
 echo      8     eeeee eeeee eeeee eeee eeeee       8   8  8 e   e e  eeeee eeeee eeee eeeee        8 8   8 8  8
 echo      8eeee 8   8 8   "   8   8    8   8       8e  8  8 8   8 8  8   " 8   8 8    8   8        eee   eee  8e
 echo      88    8eee8 8eeee   8e  8eee 8eee8e eeee 88  8  8 8eee8 8e 8eeee 8eee8 8eee 8eee8e eeee 88  8 88  8 88
 echo      88    88  8    88   88  88   88   8      88  8  8 88  8 88    88 88    88   88   8      88  8 88  8 88
 echo      88    88  8 8ee88   88  88ee 88   8      88ee8ee8 88  8 88 8ee88 88    88ee 88   8      88  8 88  8 88eee
-echo.
 echo.
 echo  !file_count! file(s) loaded.
 echo.
@@ -153,7 +151,6 @@ call :ASK_CONTEXT
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
 echo  [TRANSLATE] Checking Ollama ...
-echo.
 call :OLLAMA_SETUP
 
 set "TRANSLATE_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --task translate --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
@@ -237,7 +234,7 @@ echo  [BACKGROUND] Processing: !src_name!
 echo.
 
 ffmpeg -y -v error -stats -i "!src!" -vn -ac 2 -ar 44100 "!src_path!!src_name!.original.wav"
-
+echo.
 "%DP%faster-whisper-xxl.exe" !BG_FLAGS! "!src!"
 if errorlevel 1 (
     echo  [ERROR] Audio separation failed - exit code !errorlevel!
@@ -276,7 +273,6 @@ call :ASK_CONTEXT
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
 echo  [SRT-TRANSLATE] Checking Ollama ...
-echo.
 call :OLLAMA_SETUP
 
 set "i=0"
