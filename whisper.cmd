@@ -100,7 +100,7 @@ echo   [4]  Transcribe ENGLISH       (language forced)
 echo   [5]  Translate GERMAN         (Whisper DE, Ollama to EN)
 echo   [6]  Translate ENGLISH        (Whisper EN, Ollama to DE)
 echo   [7]  Background Extraction    (remove vocals)
-if defined HAS_MISSING_MODELS echo   [8]  Download missing models
+if defined HAS_MISSING_MODELS echo   [8]  Download missing models   (shown only if a model is incomplete)
 echo.
 choice /c !MENU_KEYS! /n /m "!MENU_PROMPT!"
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
