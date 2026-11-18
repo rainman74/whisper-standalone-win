@@ -415,40 +415,73 @@ goto BACKGROUND_LOOP
 ::  SRT DIRECT TRANSLATION  (SRT dropped onto script)
 :: ============================================================
 :MODE_SRT_TRANSLATE
+set "JOBFILE=%TEMP%\faster-whisper-jobs.txt"
+if exist "!JOBFILE!" del "!JOBFILE!" >nul 2>&1
+set "job_count=0"
+set "jcount=0"
+set "i=0"
+:SRT_LOOP
+set /a i+=1
+if !i! gtr !file_count! goto SRT_SCAN_DONE
+
+set "src=!file[%i%]!"
+set "srt_path="
+set "srt_name="
+for %%F in ("!src!") do (
+    set "srt_path=%%~dpF"
+    set "srt_name=%%~nxF"
+)
+set "base=!srt_name!"
+set "target=DE"
+if /i "!srt_name:~-7!"==".DE.srt" (
+    set "base=!srt_name:~0,-7!"
+    set "target=EN"
+) else if /i "!srt_name:~-7!"==".EN.srt" (
+    set "base=!srt_name:~0,-7!"
+    set "target=DE"
+) else (
+    set "base=!srt_name:~0,-4!"
+    set "target=DE"
+)
+set "dst=!srt_path!!base!.!target!.srt"
+if exist "!dst!" (
+    echo [FAST-WHISPER] Subtitle already exists: !base!.!target!.srt
+    goto SRT_LOOP_NEXT
+)
+set "dup="
+set "di=0"
+:SRT_DUP_LOOP
+set /a di+=1
+if !di! gtr !jcount! goto SRT_DUP_DONE
+if /i "!jds[%di%]!"=="!dst!" set "dup=1"
+goto SRT_DUP_LOOP
+:SRT_DUP_DONE
+if defined dup (
+    echo [FAST-WHISPER] Duplicate target skipped: !base!.!target!.srt
+    goto SRT_LOOP_NEXT
+)
+set /a jcount+=1
+set "jds[!jcount!]=!dst!"
+if /i "!target!"=="EN" (
+    call :ADD_JOB "!src!" "!dst!" en
+) else (
+    call :ADD_JOB "!src!" "!dst!" de
+)
+:SRT_LOOP_NEXT
+goto SRT_LOOP
+
+:SRT_SCAN_DONE
+if !job_count!==0 (
+    echo.
+    echo [FAST-WHISPER] Nothing to do - all dropped files already have translations.
+    echo.
+    if exist "!JOBFILE!" del "!JOBFILE!" >nul 2>&1
+    goto END
+)
 call :ASK_CONTEXT
 if /i "!CTX!"=="C" goto CANCELLED_BY_USER
 if /i "!CTX!"=="R" goto MAIN_MENU
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
-
-set "JOBFILE=%TEMP%\faster-whisper-jobs.txt"
-if exist "!JOBFILE!" del "!JOBFILE!" >nul 2>&1
-set "job_count=0"
-set "i=0"
-:SRT_LOOP
-set /a i+=1
-if !i! gtr !file_count! goto SRT_RUN
-
-set "src=!file[%i%]!"
-set "srt_path="
-set "srt_base="
-for %%F in ("!src!") do (
-    set "srt_path=%%~dpF"
-    set "srt_base=%%~nF"
-)
-set "out_base=!srt_base!"
-if /i "!srt_base:~-3!"==".EN" set "out_base=!srt_base:~0,-3!"
-set "out_file=!srt_path!!out_base!.DE.srt"
-if exist "!out_file!" del "!out_file!" >nul 2>&1
-call :ADD_JOB "!src!" "!out_file!" de
-goto SRT_LOOP
-
-:SRT_RUN
-if !job_count!==0 (
-    echo.
-    echo [FAST-WHISPER] Nothing to translate.
-    echo.
-    goto END
-)
 echo.
 echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
