@@ -72,7 +72,7 @@ echo   [1]  Transcribe AUTO          (language auto-detect)
 echo   [2]  Transcribe AUTO+DIARIZE  (speaker recognition)
 echo   [3]  Transcribe GERMAN        (language forced)
 echo   [4]  Transcribe ENGLISH       (language forced)
-echo   [5]  Translate GERMAN         (Whisper DE to EN, Ollama to DE)
+echo   [5]  Translate GERMAN         (Whisper DE, Ollama to EN)
 echo   [6]  Translate ENGLISH        (Whisper EN, Ollama to DE)
 echo   [7]  Background Extraction    (remove vocals)
 echo.
@@ -164,21 +164,31 @@ echo.
 goto CLEANUP_JSON
 
 :: ============================================================
-::  [5] TRANSLATE - German source  (Whisper DE -> EN, Ollama -> DE)
+::  [5] TRANSLATE - German source  (Whisper DE, Ollama DE -> EN)
 :: ============================================================
 :MODE_TRANSLATE_DE
 set "TRANSLATE_LANG=--language de"
+set "TRANSLATE_SRC_SUFFIX=.DE.srt"
+set "TRANSLATE_TRG_SUFFIX=.EN.srt"
+set "TRANSLATE_TARGET=en"
+set "TRANSLATE_SRC_NAME=German"
+set "TRANSLATE_TRG_NAME=English"
 goto MODE_TRANSLATE
 
 :: ============================================================
-::  [6] TRANSLATE - English source  (Whisper EN -> EN, Ollama -> DE)
+::  [6] TRANSLATE - English source  (Whisper EN, Ollama EN -> DE)
 :: ============================================================
 :MODE_TRANSLATE_EN
 set "TRANSLATE_LANG=--language en"
+set "TRANSLATE_SRC_SUFFIX=.EN.srt"
+set "TRANSLATE_TRG_SUFFIX=.DE.srt"
+set "TRANSLATE_TARGET=de"
+set "TRANSLATE_SRC_NAME=English"
+set "TRANSLATE_TRG_NAME=German"
 goto MODE_TRANSLATE
 
 :: ============================================================
-::  [5]/[6] TRANSLATE  (Whisper EN-SRT + Ollama DE-SRT)
+::  [5]/[6] TRANSLATE  (Whisper transcription + Ollama translation)
 :: ============================================================
 :MODE_TRANSLATE
 call :ASK_CONTEXT
@@ -187,7 +197,7 @@ echo.
 echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
 
-set "TRANSLATE_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --task translate !TRANSLATE_LANG! --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
+set "TRANSLATE_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 !TRANSLATE_LANG! --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 
 set "i=0"
 :TRANSLATE_LOOP
@@ -208,29 +218,29 @@ echo.
 
 "%DP%faster-whisper-xxl.exe" !TRANSLATE_FLAGS! "!src!"
 if errorlevel 1 (
-    echo [FAST-WHISPER] Whisper translation failed - exit code !errorlevel!
+    echo [FAST-WHISPER] Whisper transcription failed - exit code !errorlevel!
     goto TRANSLATE_NEXT
 )
 
 if not exist "!src_path!!src_name!.srt" (
-    echo [FAST-WHISPER] No English subtitle produced: !src_name!.srt
+    echo [FAST-WHISPER] No subtitle produced: !src_name!.srt
     goto TRANSLATE_NEXT
 )
 
-move /y "!src_path!!src_name!.srt" "!src_path!!src_name!.EN.srt" >nul
-if exist "!src_path!!src_name!.DE.srt" del "!src_path!!src_name!.DE.srt" >nul 2>&1
+move /y "!src_path!!src_name!.srt" "!src_path!!src_name!!TRANSLATE_SRC_SUFFIX!" >nul
+if exist "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" del "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" >nul 2>&1
 echo.
-echo [FAST-WHISPER] Starting German translation via Ollama ...
+echo [FAST-WHISPER] Starting translation via Ollama (!TRANSLATE_SRC_NAME! to !TRANSLATE_TRG_NAME!) ...
 echo.
-python "%DP%translate_srt.py" "!src_path!!src_name!.EN.srt" "!src_path!!src_name!.DE.srt" !CTX! "!MODEL!"
+python "%DP%translate_srt.py" "!src_path!!src_name!!TRANSLATE_SRC_SUFFIX!" "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" !CTX! "!MODEL!" !TRANSLATE_TARGET!
 if errorlevel 1 (
-    echo [FAST-WHISPER] German translation failed - exit code !errorlevel!
+    echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
     goto TRANSLATE_NEXT
 )
-if exist "!src_path!!src_name!.DE.srt" (
-    echo [FAST-WHISPER] German translation created: !src_name!.DE.srt
+if exist "!src_path!!src_name!!TRANSLATE_TRG_SUFFIX!" (
+    echo [FAST-WHISPER] Translation created: !src_name!!TRANSLATE_TRG_SUFFIX!
 ) else (
-    echo [FAST-WHISPER] German translation failed - no output written.
+    echo [FAST-WHISPER] Translation failed - no output written.
 )
 
 :TRANSLATE_NEXT

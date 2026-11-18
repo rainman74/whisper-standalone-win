@@ -25,8 +25,8 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - `[2]` Auto transcription + speaker diarization
 - `[3]` German transcription (language forced) → `<name>.DE.srt`
 - `[4]` English transcription (language forced) → `<name>.EN.srt`
-- `[5]` Translate GERMAN: Whisper with `--language de` → EN SRT, then Ollama/mistral-nemo → DE SRT (context option B uses translategemma:12b)
-- `[6]` Translate ENGLISH: Whisper with `--language en` → EN SRT, then Ollama/mistral-nemo → DE SRT
+- `[5]` Translate GERMAN: Whisper `--language de` → `<name>.DE.srt`, then Ollama translates DE→EN → `<name>.EN.srt` (context option B uses translategemma:12b)
+- `[6]` Translate ENGLISH: Whisper `--language en` → `<name>.EN.srt`, then Ollama translates EN→DE → `<name>.DE.srt`
 - `[7]` Vocal/background separation — outputs clean background WAV
 
 **Features:**
@@ -44,6 +44,7 @@ Standalone SRT translator — English to German via Ollama, fully local. Uses mi
 **Features:**
 - Drop one or more SRT files for batch processing
 - No cloud, no API key required
+- Direction: English→German by default; 	ranscribe.cmd modes 5/6 additionally use German→English (target language is passed as 5th argument)
 - Selectable context block count (0, 3, `A` = 10 with mistral-nemo, `B` = 10 with `translategemma:12b`): controls translation coherence vs. speed
 - Output naming: `video.EN.srt` → `video.DE.srt`, or `video.srt` → `video.DE.srt`
 - Ollama is installed automatically if missing; the models must be pulled once (`ollama pull mistral-nemo`, `ollama pull translategemma:12b` for option B)

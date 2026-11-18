@@ -11,6 +11,7 @@ from difflib import SequenceMatcher
 
 OLLAMA_API = "http://127.0.0.1:11434"
 MODEL      = "mistral-nemo"
+TARGET_LANG = "de"   # target language: 'de' (default) or 'en'
 
 # ---------------------------------------------------------------------------
 #  Ollama Setup
@@ -100,18 +101,24 @@ def similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 def _has_untranslated(source, result):
-    """True if result likely contains untranslated words from the English source.
-    Proper nouns (capitalized after sentence-internal punctuation) are excluded."""
+    """True if result likely contains untranslated words from the source language."""
     if not source or not result:
         return False
-    proper = {m.group().lower()
-              for m in re.finditer(r'(?<=[,;.!?] )[A-Z][a-z]{2,}', source)}
-    src = {w.lower() for w in re.findall(r'[a-zA-Z]{5,}', source)} - proper
-    res = {w.lower() for w in re.findall(r'[a-zA-Z]{5,}', result)}
+    if TARGET_LANG == "de":
+        word_re = r'[a-zA-Z]{5,}'
+        proper_re = r'(?<=[,;.!?] )[A-Z][a-z]{2,}'
+    else:
+        word_re = r'[a-zA-ZäöüÄÖÜß]{5,}'
+        proper_re = r'(?<=[,;.!?] )[A-ZÄÖÜ][a-zäöüß]{2,}'
+    proper = {m.group().lower() for m in re.finditer(proper_re, source)}
+    src = {w.lower() for w in re.findall(word_re, source)} - proper
+    res = {w.lower() for w in re.findall(word_re, result)}
     return bool(src & res)
 
 def _detect_register(context_blocks, ctx):
     """Returns 'Sie', 'du', or None if register is unclear."""
+    if TARGET_LANG != "de":
+        return None
     if not context_blocks:
         return None
     sie = 0
@@ -131,7 +138,9 @@ ANALYSIS_CTX_MAX = 10  # max entity-tracking window (capped by ctx)
 
 def _translate_minimal(text):
     """Aggressive fallback: minimal prompt when full prompt fails to translate."""
-    prompt = f"[INST] Translate this English text to German. Output ONLY the German translation:\n{text} [/INST]"
+    src_name = "English" if TARGET_LANG == "de" else "German"
+    trg_name = "German" if TARGET_LANG == "de" else "English"
+    prompt = f"[INST] Translate this {src_name} text to {trg_name}. Output ONLY the {trg_name} translation:\n{text} [/INST]"
     try:
         response = requests.post(f"{OLLAMA_API}/api/generate", json={
             "model": MODEL, "prompt": prompt, "stream": False,
@@ -155,12 +164,14 @@ def translate_text(text, context_blocks=None, ctx=3, force_variety=False, _allow
         for _, de in context_blocks[-analysis_ctx:]:
             analysis_str += f"  {de}\n"
 
-    # Translation context: last 3 EN+DE pairs for style matching
+    # Translation context: recent source/target pairs for style matching
     style_ctx = min(ctx, 10)
+    src_label = "EN" if TARGET_LANG == "de" else "DE"
+    trg_label = "DE" if TARGET_LANG == "de" else "EN"
     context_str = ""
     if context_blocks and style_ctx > 0:
-        for en, de in context_blocks[-style_ctx:]:
-            context_str += f"  EN: {en}\n  DE: {de}\n"
+        for src_seg, trg_seg in context_blocks[-style_ctx:]:
+            context_str += f"  {src_label}: {src_seg}\n  {trg_label}: {trg_seg}\n"
 
     # Inject register rule when dominant form is clear
     register = _detect_register(context_blocks, ctx)
@@ -180,21 +191,37 @@ def translate_text(text, context_blocks=None, ctx=3, force_variety=False, _allow
     else:
         context_header = ""
 
+    target_name = "German" if TARGET_LANG == "de" else "English"
+    if TARGET_LANG == "de":
+        rules = (
+            "1. Use natural German syntax (Verbzweitstellung, Satzklammer) — never adopt source-language structure.\n"
+            "2. Treat each segment as part of a chain — track subject gender, number, and status from prior context. Never translate in isolation.\n"
+            "3. Determine noun gender first. Align ALL dependent forms (articles, pronouns, adjectives) in correct gender, case (Nom/Gen/Dat/Akk), and number. Never mix genders within a reference chain.\n"
+            "4. Check logical consistency: speaker POV, temporal sequence, and factual references must be coherent across segments.\n"
+            "5. Transfer idioms and metaphors to natural German equivalents — never translate figurative language literally.\n"
+            "6. No anglicisms when German equivalents exist. No domain-specific jargon for everyday expressions. Use period-appropriate vocabulary.\n"
+            "7. Translate EVERY word to German — no English word may remain. This includes interjections, honorifics, and standalone words before punctuation.\n"
+            "8. Vary phrasing — avoid mechanical repetitions from source structure. Fragments stay fragments. Keep concise.\n"
+        )
+    else:
+        rules = (
+            "1. Use natural English syntax and idiom — never adopt source-language structure.\n"
+            "2. Treat each segment as part of a chain — track subject, number, and status from prior context. Never translate in isolation.\n"
+            "3. Keep tense, aspect and modality consistent across segments; align pronouns with their referents.\n"
+            "4. Check logical consistency: speaker POV, temporal sequence, and factual references must be coherent across segments.\n"
+            "5. Transfer idioms and metaphors to natural English equivalents — never translate figurative language literally.\n"
+            "6. No Germanisms when English equivalents exist. No domain-specific jargon for everyday expressions. Use period-appropriate vocabulary.\n"
+            "7. Translate EVERY word to English — no German word may remain. This includes interjections, honorifics, and standalone words before punctuation.\n"
+            "8. Vary phrasing — avoid mechanical repetitions from source structure. Fragments stay fragments. Keep concise.\n"
+        )
     prompt = (
         f"[INST] Role: Professional Subtitle Translator\n\n"
         f"{context_header}"
-        f"Translate to German: {text}\n\n"
+        f"Translate to {target_name}: {text}\n\n"
         f"Rules:\n"
-        f"1. Use natural German syntax (Verbzweitstellung, Satzklammer) — never adopt source-language structure.\n"
-        f"2. Treat each segment as part of a chain — track subject gender, number, and status from prior context. Never translate in isolation.\n"
-        f"3. Determine noun gender first. Align ALL dependent forms (articles, pronouns, adjectives) in correct gender, case (Nom/Gen/Dat/Akk), and number. Never mix genders within a reference chain.\n"
-        f"4. Check logical consistency: speaker POV, temporal sequence, and factual references must be coherent across segments.\n"
-        f"5. Transfer idioms and metaphors to natural German equivalents — never translate figurative language literally.\n"
-        f"6. No anglicisms when German equivalents exist. No domain-specific jargon for everyday expressions. Use period-appropriate vocabulary.\n"
-        f"7. Translate EVERY word to German — no English word may remain. This includes interjections, honorifics, and standalone words before punctuation.\n"
-        f"8. Vary phrasing — avoid mechanical repetitions from source structure. Fragments stay fragments. Keep concise.\n"
+        f"{rules}"
         f"{register_rule}"
-        f"Output ONLY the German translation. NEVER add parenthesized hints, notes, analysis, checklists, reasoning, or meta-commentary. [/INST]"
+        f"Output ONLY the {target_name} translation. NEVER add parenthesized hints, notes, analysis, checklists, reasoning, or meta-commentary. [/INST]"
     )
     payload = {
         "model": MODEL,
@@ -383,6 +410,8 @@ if __name__ == "__main__":
         ctx = int(sys.argv[3]) if len(sys.argv) >= 4 else 3
         if len(sys.argv) >= 5:
             MODEL = sys.argv[4]
+        if len(sys.argv) >= 6:
+            TARGET_LANG = sys.argv[5].lower()
         setup_ollama()
         process_srt(sys.argv[1], sys.argv[2], ctx)
         stop_ollama()
