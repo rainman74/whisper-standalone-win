@@ -72,14 +72,16 @@ echo   [1]  Transcribe AUTO          (language auto-detect)
 echo   [2]  Transcribe AUTO+DIARIZE  (speaker recognition)
 echo   [3]  Transcribe GERMAN        (language forced)
 echo   [4]  Transcribe ENGLISH       (language forced)
-echo   [5]  Translate                (Whisper EN + DE via Ollama)
-echo   [6]  Background Extraction    (remove vocals)
+echo   [5]  Translate GERMAN         (Whisper DE -> EN -> DE via Ollama)
+echo   [6]  Translate ENGLISH        (Whisper EN -> DE via Ollama)
+echo   [7]  Background Extraction    (remove vocals)
 echo.
-choice /c 123456E /n /m "  Select [1-6, E = Abort]: "
+choice /c 1234567E /n /m "  Select [1-7, E = Abort]: "
 
-if errorlevel 7 goto END
-if errorlevel 6 goto MODE_BACKGROUND
-if errorlevel 5 goto MODE_TRANSLATE
+if errorlevel 8 goto END
+if errorlevel 7 goto MODE_BACKGROUND
+if errorlevel 6 goto MODE_TRANSLATE_EN
+if errorlevel 5 goto MODE_TRANSLATE_DE
 if errorlevel 4 goto MODE_EN
 if errorlevel 3 goto MODE_DE
 if errorlevel 2 goto MODE_DIARIZE
@@ -162,7 +164,21 @@ echo.
 goto CLEANUP_JSON
 
 :: ============================================================
-::  [5] TRANSLATE  (Whisper EN-SRT + Ollama DE-SRT)
+::  [5] TRANSLATE - German source  (Whisper DE -> EN, Ollama -> DE)
+:: ============================================================
+:MODE_TRANSLATE_DE
+set "TRANSLATE_LANG=--language de"
+goto MODE_TRANSLATE
+
+:: ============================================================
+::  [6] TRANSLATE - English source  (Whisper EN -> EN, Ollama -> DE)
+:: ============================================================
+:MODE_TRANSLATE_EN
+set "TRANSLATE_LANG=--language en"
+goto MODE_TRANSLATE
+
+:: ============================================================
+::  [5]/[6] TRANSLATE  (Whisper EN-SRT + Ollama DE-SRT)
 :: ============================================================
 :MODE_TRANSLATE
 call :ASK_CONTEXT
@@ -171,7 +187,7 @@ echo.
 echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
 
-set "TRANSLATE_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --task translate --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
+set "TRANSLATE_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --task translate !TRANSLATE_LANG! --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 
 set "i=0"
 :TRANSLATE_LOOP
@@ -227,7 +243,7 @@ goto TRANSLATE_LOOP
 goto END
 
 :: ============================================================
-::  [6] BACKGROUND EXTRACTION
+::  [7] BACKGROUND EXTRACTION
 :: ============================================================
 :MODE_BACKGROUND
 set "BG_FLAGS=--beep_off -pp -o source --standard -f srt -m tiny --ff_vocal_extract mdx_kim2 --ff_dump --mdx_chunk 15 --print_progress"

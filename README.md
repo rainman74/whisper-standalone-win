@@ -25,8 +25,9 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - `[2]` Auto transcription + speaker diarization
 - `[3]` German transcription (language forced) → `<name>.DE.srt`
 - `[4]` English transcription (language forced) → `<name>.EN.srt`
-- `[5]` Two-stage translation: Whisper → EN SRT, then Ollama/mistral-nemo → DE SRT (context option B uses translategemma:12b)
-- `[6]` Vocal/background separation — outputs clean background WAV
+- `[5]` Translate GERMAN: Whisper with `--language de` → EN SRT, then Ollama/mistral-nemo → DE SRT (context option B uses translategemma:12b)
+- `[6]` Translate ENGLISH: Whisper with `--language en` → EN SRT, then Ollama/mistral-nemo → DE SRT
+- `[7]` Vocal/background separation — outputs clean background WAV
 
 **Features:**
 - Drop SRT files directly onto the script to skip the menu and go straight to translation
