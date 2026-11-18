@@ -4,6 +4,18 @@
 
 ---
 
+## Requirements
+
+- Windows 10/11 x64
+- **Python 3.x** with `requests` for the Ollama-based translation (the wrappers run `pip install requests` if it is missing)
+- **Ollama** for mode 5 and the SRT translator: installed automatically if missing, but the model must be pulled once — `ollama pull mistral-nemo`
+- Free disk space for the Whisper model cache in `_models/` (several GB)
+- For CUDA: an NVIDIA GPU. `large-v2` needs at least 6 GB VRAM; running the Ollama DE translation on the same GPU (mistral-nemo about 7.1 GB) needs at least 10 GB VRAM. CPU-only works but is much slower.
+
+The Whisper executable itself is fully standalone — Python and Ollama are only needed for the translation features.
+
+---
+
 ## transcribe.cmd
 
 Drag-and-drop launcher for video and audio files with an interactive mode menu.
@@ -18,8 +30,9 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 
 **Features:**
 - Drop SRT files directly onto the script to skip the menu and go straight to translation
-- Ollama is auto-installed and configured for full GPU offloading
-- JSON and WAV temp files are cleaned up automatically after each run
+- Ollama is installed automatically if missing; the `mistral-nemo` model must be pulled once (see [Requirements](#requirements))
+- Ollama is restarted with GPU-friendly settings (`OLLAMA_KV_CACHE_TYPE=q4_0`, `OLLAMA_FLASH_ATTENTION=1`) — this stops other running Ollama sessions
+- JSON and intermediate WAV files are removed automatically after each run
 
 ---
 
@@ -30,9 +43,9 @@ Standalone SRT translator — English to German via Ollama/mistral-nemo, fully l
 **Features:**
 - Drop one or more SRT files for batch processing
 - No cloud, no API key required
-- Selectable context block count (0–5): controls translation coherence vs. speed
+- Selectable context block count (0–5, or `A` = 10): controls translation coherence vs. speed
 - Output naming: `video.EN.srt` → `video.DE.srt`, or `video.srt` → `video.DE.srt`
-- Ollama is auto-installed if missing
+- Ollama is installed automatically if missing; the model must be pulled once (`ollama pull mistral-nemo`)
 
 ---
 
@@ -73,7 +86,7 @@ faster-whisper-xxl.exe "D:\videofile.mkv" -l ja -m large-v2 --task translate -o 
 ```
 faster-whisper-xxl.exe "D:\VideoFolder" -l en -m large-v2 -o source --standard -f srt ^
   --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --temperature 0.0 ^
-  --word_timestamps true --condition_on_previous_text true --batch_recursive --check_files
+  --word_timestamps true --condition_on_previous_text true --batch_recursive --skip
 ```
 
 ## Wrapper examples
@@ -96,9 +109,9 @@ translatesrt.cmd "D:\Sub1.EN.srt" "D:\Sub2.EN.srt" "D:\Sub3.EN.srt"
 - **Word timestamps**: `--word_timestamps true` enables per-word timing — required for subtitle re-segmentation and burn-in workflows.
 - **VAD**: Default `silero_v4_fw` is robust and requires no extra setup. Use `--vad_method pyannote_v3` for the best accuracy — requires a HuggingFace token and prior model download. Avoid `silero_v5_fw` (poor accuracy).
 - **Diarization**: `pyannote_v3.1` with `--diarize_device cuda` is the best option without license restrictions. `reverb_v2` is reportedly more accurate but restricted to personal non-profit use only.
-- **GPU**: CUDA is detected automatically. `large-v2` needs at least 6 GB VRAM; for parallel Ollama DE translation (mistral-nemo 7.7 GB) at least 10 GB VRAM is required.
-- **Ollama translation**: The wrapper sets `OLLAMA_KV_CACHE_TYPE=q4_0` and `OLLAMA_FLASH_ATTENTION=1` to keep mistral-nemo fully in GPU memory. The server is restarted automatically to apply these settings.
-- **Batch processing**: Pass a folder path with `--batch_recursive` to process all media files in a directory tree. Add `--check_files` to skip files that already have a matching SRT — safe to re-run after interruptions.
+- **GPU**: CUDA is detected automatically. `large-v2` needs at least 6 GB VRAM; running the Ollama DE translation on the same GPU (mistral-nemo about 7.1 GB) needs at least 10 GB VRAM.
+- **Ollama translation**: The wrapper sets `OLLAMA_KV_CACHE_TYPE=q4_0` and `OLLAMA_FLASH_ATTENTION=1` to keep mistral-nemo fully in GPU memory. The server is restarted automatically to apply these settings — this stops every running `ollama.exe`, so other Ollama work is interrupted.
+- **Batch processing**: Pass a folder path with `--batch_recursive` to process all media files in a directory tree. `--check_files` validates the media files before processing; it does **not** skip existing subtitles. To skip files that already have a matching SRT, use `--skip` (works with a folder or wildcard input, not with single dropped files). Without it, existing SRTs are overwritten.
 - **Output location**: `-o source` places all output files next to the source file. Use `--output_dir "D:\Output"` to redirect to a fixed folder.
 
 ---

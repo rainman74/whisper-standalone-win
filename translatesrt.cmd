@@ -1,5 +1,4 @@
 @echo off
-color 0A
 setlocal enabledelayedexpansion
 
 set "DP=%~dp0"
@@ -35,7 +34,8 @@ echo   ---  -----------------------------  --------------
 echo   0    No context                     Fastest
 echo   1    Minimal coherence              Very fast
 echo   2    Consistent names and address   Fast
-echo   3    Good compromise                Moderate     ^<-- Default
+echo   3    Good compromise                Moderate
+echo   4    Stronger context               Slower
 echo   5    Very consistent style          Slow
 echo   A    Full entity tracking (10)      Slowest
 echo.
@@ -57,26 +57,7 @@ echo.
 echo  Checking Ollama ...
 echo.
 
-where ollama >nul 2>nul
-if errorlevel 1 (
-    echo  Ollama not found. Downloading installer ...
-    curl -L https://ollama.com/download/OllamaSetup.exe -o "%temp%\OllamaSetup.exe"
-    echo  Installing Ollama ...
-    start /wait "" "%temp%\OllamaSetup.exe" /silent
-    set "PATH=%PATH%;%LocalAppData%\Programs\Ollama"
-    timeout /t 3 >nul
-)
-
-set "OLLAMA_HOST=127.0.0.1"
-set "OLLAMA_FLASH_ATTENTION=1"
-set "OLLAMA_KV_CACHE_TYPE=q4_0"
-set "OLLAMA_GPU_OVERHEAD=0"
-set "OLLAMA_NUM_PARALLEL=1"
-set "OLLAMA_LOG_LEVEL=error"
-set "OLLAMA_NUM_THREADS=8"
-
-python -c "import requests" >nul 2>nul
-if errorlevel 1 pip install requests
+call :OLLAMA_SETUP
 
 :: ============================================================
 ::  Translate loop
@@ -91,6 +72,8 @@ set /a i+=1
 if !i! gtr !file_count! exit /b
 
 set "src=!file[%i%]!"
+set "srt_path="
+set "srt_base="
 for %%F in ("!src!") do (
     set "srt_path=%%~dpF"
     set "srt_base=%%~nF"
@@ -104,16 +87,76 @@ echo.
 echo  Translating: !srt_base!.srt  --^>  !out_base!.DE.srt
 echo.
 
+if exist "!out_file!" del "!out_file!" >nul 2>&1
 python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX!
-
-if exist "!out_file!" echo  German translation created successfully.
-if not exist "!out_file!" echo  [ERROR] Translation failed.
-
+if errorlevel 1 (
+    echo  [ERROR] Translation failed - exit code !errorlevel!
+) else (
+    if exist "!out_file!" (
+        echo  [OK] German translation created: !out_base!.DE.srt
+    ) else (
+        echo  [ERROR] Translation failed - no output written.
+    )
+)
 goto SRT_INNER
+
+:: ============================================================
+::  Subroutine: check Ollama / Python prerequisites
+:: ============================================================
+:OLLAMA_SETUP
+
+:: --- Python is required for the Ollama translation ---
+where python >nul 2>nul
+if errorlevel 1 (
+    echo  [ERROR] Python not found in PATH - required for the Ollama translation.
+    echo          Install Python 3.x and make sure "python" is available.
+    goto TSRT_END
+)
+
+:: --- Install Ollama if missing ---
+where ollama >nul 2>nul
+if errorlevel 1 (
+    echo  Ollama not found. Downloading installer ...
+    curl -L https://ollama.com/download/OllamaSetup.exe -o "%temp%\OllamaSetup.exe"
+    if errorlevel 1 (
+        echo  [ERROR] Ollama download failed - check your internet connection.
+        goto TSRT_END
+    )
+    echo  Installing Ollama ...
+    start /wait "" "%temp%\OllamaSetup.exe" /silent
+    if errorlevel 1 echo  [WARNING] Ollama installer returned an error.
+    set "PATH=!PATH!;!LOCALAPPDATA!\Programs\Ollama"
+    timeout /t 3 >nul
+    where ollama >nul 2>nul
+    if errorlevel 1 (
+        echo  [ERROR] Ollama is not available - please install it manually.
+        goto TSRT_END
+    )
+)
+
+:: --- Ollama environment variables (inherited by server process) ---
+set "OLLAMA_HOST=127.0.0.1"
+set "OLLAMA_FLASH_ATTENTION=1"
+set "OLLAMA_KV_CACHE_TYPE=q4_0"
+set "OLLAMA_GPU_OVERHEAD=0"
+set "OLLAMA_NUM_PARALLEL=1"
+set "OLLAMA_LOG_LEVEL=error"
+set "OLLAMA_NUM_THREADS=8"
+
+:: --- Check Python requests ---
+python -c "import requests" >nul 2>nul
+if errorlevel 1 (
+    echo  Installing Python package "requests" ...
+    python -m pip install requests
+    if errorlevel 1 (
+        echo  [ERROR] Could not install "requests" - translation will not work.
+        goto TSRT_END
+    )
+)
+
+exit /b
 
 :TSRT_END
 echo.
-color 0A
 pause
-color
 exit /b
