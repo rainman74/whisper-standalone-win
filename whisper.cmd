@@ -517,8 +517,12 @@ for %%F in ("!bf!") do (
     set "bfp=%%~dpF"
     set "bfn=%%~nF"
 )
-if exist "!bfp!!bfn!!OUTSUFFIX!" (
-    echo [FAST-WHISPER] Subtitle already exists: !bfn!!OUTSUFFIX!
+set "have="
+if exist "!bfp!!bfn!.srt" set "have=!bfn!.srt"
+if exist "!bfp!!bfn!.DE.srt" set "have=!bfn!.DE.srt"
+if exist "!bfp!!bfn!.EN.srt" set "have=!bfn!.EN.srt"
+if defined have (
+    echo [FAST-WHISPER] Subtitle already exists: !have!
     set /a skip_count+=1
     goto WORKLIST_LOOP
 )
@@ -538,11 +542,10 @@ if !todo_count!==0 (
 exit /b
 
 :: ============================================================
-::  Subroutine: rename the subtitle to the mode-specific suffix
+::  Subroutine: rename auto-detected subtitle by its language (de/en)
 :: ============================================================
 :RENAME_OUTPUT
-if "!IS_DIR!"=="1" exit /b
-if /i "!OUTSUFFIX!"==".srt" exit /b
+if "!IS_DIR!"=="1" goto RENAME_DIR_OUTPUT
 set "ri=0"
 :RENAME_OUTPUT_LOOP
 set /a ri+=1
@@ -554,8 +557,40 @@ for %%F in ("!rf!") do (
     set "rfp=%%~dpF"
     set "rfn=%%~nF"
 )
-if exist "!rfp!!rfn!.srt" move /y "!rfp!!rfn!.srt" "!rfp!!rfn!!OUTSUFFIX!" >nul
+if not exist "!rfp!!rfn!.srt" goto RENAME_OUTPUT_LOOP
+set "lang="
+if exist "!rfp!!rfn!.json" (
+    for /f "usebackq tokens=2 delims=:" %%L in (`findstr /i /c:language "!rfp!!rfn!.json"`) do (
+        set "lv=%%L"
+        set "lv=!lv: =!"
+        for /f "tokens=1 delims=," %%M in ("!lv!") do set "lv=%%M"
+        set "lv=!lv:"=!"
+        set "lang=!lv!"
+    )
+)
+if /i "!lang!"=="de" move /y "!rfp!!rfn!.srt" "!rfp!!rfn!.DE.srt" >nul
+if /i "!lang!"=="en" move /y "!rfp!!rfn!.srt" "!rfp!!rfn!.EN.srt" >nul
 goto RENAME_OUTPUT_LOOP
+
+:RENAME_DIR_OUTPUT
+if not defined DIR_PATH exit /b
+pushd "!DIR_PATH!"
+for /r %%J in (*.json) do (
+    set "dpath=%%~dpJ"
+    set "dname=%%~nJ"
+    set "dlang="
+    for /f "usebackq tokens=2 delims=:" %%L in (`findstr /i /c:language "%%J"`) do (
+        set "lv=%%L"
+        set "lv=!lv: =!"
+        for /f "tokens=1 delims=," %%M in ("!lv!") do set "lv=%%M"
+        set "lv=!lv:"=!"
+        set "dlang=!lv!"
+    )
+    if /i "!dlang!"=="de" if exist "!dpath!!dname!.srt" move /y "!dpath!!dname!.srt" "!dpath!!dname!.DE.srt" >nul
+    if /i "!dlang!"=="en" if exist "!dpath!!dname!.srt" move /y "!dpath!!dname!.srt" "!dpath!!dname!.EN.srt" >nul
+)
+popd
+exit /b
 
 :: ============================================================
 ::  Subroutine: verify that a subtitle was written for every file
@@ -573,7 +608,10 @@ for %%F in ("!cf!") do (
     set "cfp=%%~dpF"
     set "cfn=%%~nF"
 )
-if not exist "!cfp!!cfn!!OUTSUFFIX!" echo [FAST-WHISPER] No subtitle written: !cfn!!OUTSUFFIX!
+if exist "!cfp!!cfn!.srt" goto CHECK_OUTPUT_LOOP
+if exist "!cfp!!cfn!.DE.srt" goto CHECK_OUTPUT_LOOP
+if exist "!cfp!!cfn!.EN.srt" goto CHECK_OUTPUT_LOOP
+echo [FAST-WHISPER] No subtitle written: !cfn!
 goto CHECK_OUTPUT_LOOP
 
 :: ============================================================
@@ -667,6 +705,14 @@ exit /b
 ::  JSON cleanup for modes 1-4
 :: ============================================================
 :CLEANUP_JSON
+if "!IS_DIR!"=="1" (
+    if defined DIR_PATH (
+        pushd "!DIR_PATH!"
+        for /r %%J in (*.json) do del "%%J" >nul 2>&1
+        popd
+    )
+    goto END
+)
 set "ci=0"
 :CLEANUP_JSON_LOOP
 set /a ci+=1
