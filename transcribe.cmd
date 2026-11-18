@@ -391,10 +391,10 @@ echo   Key  Benefit                        Speed
 echo   ---  -----------------------------  --------------
 echo   0    No context                     Fastest
 echo   3    Good compromise                Moderate
-echo   A    Full entity tracking (10)      Slowest
+echo   A    Full entity tracking (Mistral) Slowest
 echo   B    Full entity tracking (Gemma)   Best
 echo.
-choice /c 03ABE /n /m "  Context blocks [0, 3, A = 10, B = Gemma, E = Abort]: "
+choice /c 03ABE /n /m "  Context blocks [0, 3, A = 10, B = 10, E = Abort]: "
 if errorlevel 5 (set "CTX=E"  & exit /b)
 if errorlevel 4 (set "CTX=10" & set "MODEL=translategemma:12b" & exit /b)
 if errorlevel 3 (set "CTX=10" & exit /b)
