@@ -15,22 +15,17 @@ if "%~1"=="" (
     exit /b
 )
 
-:: Tool path
 set "DP=%~dp0"
 
-:: Default translation model (context option B switches to translategemma:12b)
 set "MODEL=mistral-nemo"
 
-:: Subtitle suffix of the selected mode (mode 3 = .DE.srt, mode 4 = .EN.srt)
 set "OUTSUFFIX=.srt"
 set "WORKLIST_EMPTY="
 set "ERRLOG=%TEMP%\faster-whisper-stderr.log"
 if exist "!ERRLOG!" del "!ERRLOG!" >nul 2>&1
 
-:: Save extension of first file BEFORE shift consumes the args
 set "_ext=%~x1"
 
-:: Directory dropped? (batch mode handles skipping itself via --skip)
 set "IS_DIR=0"
 pushd "%~1" 2>nul
 if not errorlevel 1 (
@@ -39,7 +34,6 @@ if not errorlevel 1 (
     popd
 )
 
-:: Collect all dropped files
 set "file_list="
 set "file_count=0"
 
@@ -50,7 +44,6 @@ set "file_list=!file_list! "%~1""
 shift
 if not "%~1"=="" goto COLLECT
 
-:: SRT dropped directly -> skip menu, go straight to translation
 if /i "%_ext%"==".srt" goto MODE_SRT_TRANSLATE
 
 :: ============================================================
@@ -363,6 +356,7 @@ for /r %%F in (*) do (
 )
 popd
 exit /b
+:: ============================================================
 ::  Error handling for transcription modes
 :: ============================================================
 :TRANSCRIBE_FAIL
@@ -724,7 +718,6 @@ goto CTX_INPUT
 :: ============================================================
 :OLLAMA_SETUP
 
-:: --- Python is required for the Ollama translation ---
 where python >nul 2>nul
 if errorlevel 1 (
     echo [FAST-WHISPER] Python not found in PATH - required for the Ollama translation.
@@ -732,7 +725,6 @@ if errorlevel 1 (
     goto END
 )
 
-:: --- Install Ollama if missing ---
 where ollama >nul 2>nul
 if errorlevel 1 (
     echo [FAST-WHISPER] Ollama not found. Downloading installer ...
@@ -753,7 +745,6 @@ if errorlevel 1 (
     )
 )
 
-:: --- Ollama environment variables (inherited by server process) ---
 set "OLLAMA_HOST=127.0.0.1"
 set "OLLAMA_FLASH_ATTENTION=1"
 set "OLLAMA_KV_CACHE_TYPE=q4_0"
@@ -762,7 +753,6 @@ set "OLLAMA_NUM_PARALLEL=1"
 set "OLLAMA_LOG_LEVEL=error"
 set "OLLAMA_NUM_THREADS=8"
 
-:: --- Check Python requests ---
 python -c "import requests" >nul 2>nul
 if errorlevel 1 (
     echo [FAST-WHISPER] Installing Python package "requests" ...
