@@ -359,7 +359,7 @@ def process_srt(input_file, output_file, ctx=3):
                 last_flush = len(translated_blocks)
 
     except KeyboardInterrupt:
-        print(f"\n\n[FAST-WHISPER] {len(translated_blocks)} of {total_blocks} subtitles translated.", flush=True)
+        print(f"\n\n[FAST-WHISPER] Translation cancelled: {len(translated_blocks)} of {total_blocks} subtitles translated.", flush=True)
         if translated_blocks:
             write_srt(output_file, header, translated_blocks)
             print(f"[FAST-WHISPER] Partial translation saved to:\n[FAST-WHISPER] {output_file}", flush=True)
