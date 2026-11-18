@@ -86,12 +86,12 @@ echo.
 if exist "!out_file!" del "!out_file!" >nul 2>&1
 python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX! "!MODEL!"
 if errorlevel 1 (
-    echo [FAST-WHISPER] [ERROR] Translation failed - exit code !errorlevel!
+    echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
 ) else (
     if exist "!out_file!" (
-        echo [FAST-WHISPER] [OK] German translation created: !out_base!.DE.srt
+        echo [FAST-WHISPER] German translation created: !out_base!.DE.srt
     ) else (
-        echo [FAST-WHISPER] [ERROR] Translation failed - no output written.
+        echo [FAST-WHISPER] Translation failed - no output written.
     )
 )
 goto SRT_INNER
@@ -104,7 +104,7 @@ goto SRT_INNER
 :: --- Python is required for the Ollama translation ---
 where python >nul 2>nul
 if errorlevel 1 (
-    echo [FAST-WHISPER] [ERROR] Python not found in PATH - required for the Ollama translation.
+    echo [FAST-WHISPER] Python not found in PATH - required for the Ollama translation.
     echo [FAST-WHISPER] Install Python 3.x and make sure "python" is available.
     goto TSRT_END
 )
@@ -115,7 +115,7 @@ if errorlevel 1 (
     echo [FAST-WHISPER] Ollama not found. Downloading installer ...
     curl -L https://ollama.com/download/OllamaSetup.exe -o "%temp%\OllamaSetup.exe"
     if errorlevel 1 (
-        echo [FAST-WHISPER] [ERROR] Ollama download failed - check your internet connection.
+        echo [FAST-WHISPER] Ollama download failed - check your internet connection.
         goto TSRT_END
     )
     echo [FAST-WHISPER] Installing Ollama ...
@@ -125,7 +125,7 @@ if errorlevel 1 (
     timeout /t 3 >nul
     where ollama >nul 2>nul
     if errorlevel 1 (
-        echo [FAST-WHISPER] [ERROR] Ollama is not available - please install it manually.
+        echo [FAST-WHISPER] Ollama is not available - please install it manually.
         goto TSRT_END
     )
 )
@@ -145,7 +145,7 @@ if errorlevel 1 (
     echo [FAST-WHISPER] Installing Python package "requests" ...
     python -m pip install requests
     if errorlevel 1 (
-        echo [FAST-WHISPER] [ERROR] Could not install "requests" - translation will not work.
+        echo [FAST-WHISPER] Could not install "requests" - translation will not work.
         goto TSRT_END
     )
 )

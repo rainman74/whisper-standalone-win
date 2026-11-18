@@ -84,7 +84,7 @@ if errorlevel 1 goto MODE_AUTO
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
 echo.
-echo [FAST-WHISPER] [AUTO] Starting transcription (language auto-detect) ...
+echo [FAST-WHISPER] Starting transcription (language auto-detect) ...
 echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list!
 if errorlevel 1 goto TRANSCRIBE_FAIL
@@ -98,7 +98,7 @@ goto CLEANUP_JSON
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
 echo.
-echo [FAST-WHISPER] [DIARIZE] Starting transcription with speaker recognition ...
+echo [FAST-WHISPER] Starting transcription with speaker recognition ...
 echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --diarize pyannote_v3.1 --diarize_device cuda
 if errorlevel 1 goto TRANSCRIBE_FAIL
@@ -112,7 +112,7 @@ goto CLEANUP_JSON
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
 echo.
-echo [FAST-WHISPER] [DE] Starting transcription in German ...
+echo [FAST-WHISPER] Starting transcription in German ...
 echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language de
 if errorlevel 1 goto TRANSCRIBE_FAIL
@@ -126,7 +126,7 @@ goto CLEANUP_JSON
 set "COMMON=--beep_off -pp -o source --batch_recursive --skip --check_files --standard -f json srt -m large-v2 --ff_vocal_extract mdx_kim2 --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
 call :BUILD_WORKLIST
 echo.
-echo [FAST-WHISPER] [EN] Starting transcription in English ...
+echo [FAST-WHISPER] Starting transcription in English ...
 echo.
 "%DP%faster-whisper-xxl.exe" %COMMON% !todo_list! --language en
 if errorlevel 1 goto TRANSCRIBE_FAIL
@@ -139,7 +139,7 @@ goto CLEANUP_JSON
 :TRANSCRIBE_FAIL
 set "fail_code=!errorlevel!"
 echo.
-echo [FAST-WHISPER] [ERROR] Transcription failed - exit code !fail_code!
+echo [FAST-WHISPER] Transcription failed - exit code !fail_code!
 echo.
 goto CLEANUP_JSON
 
@@ -150,7 +150,7 @@ goto CLEANUP_JSON
 call :ASK_CONTEXT
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
-echo [FAST-WHISPER] [TRANSLATE] Checking Ollama ...
+echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
 
 set "TRANSLATE_FLAGS=--beep_off -pp -o source --standard -f srt -m large-v2 --task translate --ff_vocal_extract mdx_kim2 --ff_dump --beam_size 5 --best_of 5 --chunk_length 30 --patience 2.0 --temperature 0.0 --compression_ratio_threshold 2.4 --no_speech_threshold 0.5 --word_timestamps true --condition_on_previous_text true --print_progress"
@@ -169,17 +169,17 @@ for %%F in ("!src!") do (
 )
 
 echo.
-echo [FAST-WHISPER] [TRANSLATE] Processing: !src_name!
+echo [FAST-WHISPER] Processing: !src_name!
 echo.
 
 "%DP%faster-whisper-xxl.exe" !TRANSLATE_FLAGS! "!src!"
 if errorlevel 1 (
-    echo [FAST-WHISPER] [ERROR] Whisper translation failed - exit code !errorlevel!
+    echo [FAST-WHISPER] Whisper translation failed - exit code !errorlevel!
     goto TRANSLATE_NEXT
 )
 
 if not exist "!src_path!!src_name!.srt" (
-    echo [FAST-WHISPER] [ERROR] No English subtitle produced: !src_name!.srt
+    echo [FAST-WHISPER] No English subtitle produced: !src_name!.srt
     goto TRANSLATE_NEXT
 )
 
@@ -190,13 +190,13 @@ echo [FAST-WHISPER] Starting German translation via Ollama ...
 echo.
 python "%DP%translate_srt.py" "!src_path!!src_name!.EN.srt" "!src_path!!src_name!.DE.srt" !CTX! "!MODEL!"
 if errorlevel 1 (
-    echo [FAST-WHISPER] [ERROR] German translation failed - exit code !errorlevel!
+    echo [FAST-WHISPER] German translation failed - exit code !errorlevel!
     goto TRANSLATE_NEXT
 )
 if exist "!src_path!!src_name!.DE.srt" (
-    echo [FAST-WHISPER] [OK] German translation created: !src_name!.DE.srt
+    echo [FAST-WHISPER] German translation created: !src_name!.DE.srt
 ) else (
-    echo [FAST-WHISPER] [ERROR] German translation failed - no output written.
+    echo [FAST-WHISPER] German translation failed - no output written.
 )
 
 :TRANSLATE_NEXT
@@ -230,21 +230,21 @@ for %%F in ("!src!") do (
 )
 
 echo.
-echo [FAST-WHISPER] [BACKGROUND] Processing: !src_name!
+echo [FAST-WHISPER] Processing: !src_name!
 echo.
 
 ffmpeg -y -v error -stats -i "!src!" -vn -ac 2 -ar 44100 "!src_path!!src_name!.original.wav"
 echo.
 "%DP%faster-whisper-xxl.exe" !BG_FLAGS! "!src!"
 if errorlevel 1 (
-    echo [FAST-WHISPER] [ERROR] Audio separation failed - exit code !errorlevel!
+    echo [FAST-WHISPER] Audio separation failed - exit code !errorlevel!
     goto BACKGROUND_NEXT
 )
 
 set "VOX_FILE=!src_path!!src_fullname!_mdx1.wav"
 
 if not exist "!VOX_FILE!" (
-    echo [FAST-WHISPER] [ERROR] No vocal file produced: !src_fullname!_mdx1.wav
+    echo [FAST-WHISPER] No vocal file produced: !src_fullname!_mdx1.wav
     goto BACKGROUND_NEXT
 )
 
@@ -252,7 +252,7 @@ echo.
 echo [FAST-WHISPER] Running final vocal elimination ...
 ffmpeg -y -v error -stats -i "!src_path!!src_name!.original.wav" -i "!VOX_FILE!" -filter_complex "[1:a]volume=15,bandpass=f=1500:width_type=h:w=3000[sc];[0:a][sc]sidechaincompress=threshold=0.007:ratio=20:attack=2:release=450:knee=1" -c:a pcm_s16le "!src_path!!src_name!.background.wav"
 if errorlevel 1 (
-    echo [FAST-WHISPER] [ERROR] Background extraction failed - exit code !errorlevel!
+    echo [FAST-WHISPER] Background extraction failed - exit code !errorlevel!
     goto BACKGROUND_NEXT
 )
 
@@ -260,7 +260,7 @@ del "!src_path!!src_name!.original.wav" >nul 2>&1
 del "!src_path!!src_name!.srt" >nul 2>&1
 del "!VOX_FILE!" >nul 2>&1
 if exist "!src_path!!src_fullname!_dump.wav" del "!src_path!!src_fullname!_dump.wav" >nul 2>&1
-echo [FAST-WHISPER] [OK] Background file created: !src_name!.background.wav
+echo [FAST-WHISPER] Background file created: !src_name!.background.wav
 
 :BACKGROUND_NEXT
 goto BACKGROUND_LOOP
@@ -272,7 +272,7 @@ goto BACKGROUND_LOOP
 call :ASK_CONTEXT
 if /i "!CTX!"=="E" goto CLEANUP_EXIT
 echo.
-echo [FAST-WHISPER] [SRT-TRANSLATE] Checking Ollama ...
+echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
 
 set "i=0"
@@ -300,12 +300,12 @@ echo.
 if exist "!out_file!" del "!out_file!" >nul 2>&1
 python "%DP%translate_srt.py" "!src!" "!out_file!" !CTX! "!MODEL!"
 if errorlevel 1 (
-    echo [FAST-WHISPER] [ERROR] Translation failed - exit code !errorlevel!
+    echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
 ) else (
     if exist "!out_file!" (
-        echo [FAST-WHISPER] [OK] German translation created: !out_base!.DE.srt
+        echo [FAST-WHISPER] German translation created: !out_base!.DE.srt
     ) else (
-        echo [FAST-WHISPER] [ERROR] Translation failed - no output written.
+        echo [FAST-WHISPER] Translation failed - no output written.
     )
 )
 goto SRT_LOOP
@@ -337,7 +337,7 @@ for %%F in ("!bf!") do (
     set "bfn=%%~nF"
 )
 if exist "!bfp!!bfn!.srt" (
-    echo [FAST-WHISPER] [SKIP] Subtitle already exists: !bfn!.srt
+    echo [FAST-WHISPER] Subtitle already exists: !bfn!.srt
     set /a skip_count+=1
     goto WORKLIST_LOOP
 )
@@ -406,7 +406,7 @@ exit /b
 :: --- Python is required for the Ollama translation ---
 where python >nul 2>nul
 if errorlevel 1 (
-    echo [FAST-WHISPER] [ERROR] Python not found in PATH - required for the Ollama translation.
+    echo [FAST-WHISPER] Python not found in PATH - required for the Ollama translation.
     echo [FAST-WHISPER] Install Python 3.x and make sure "python" is available.
     goto END
 )
@@ -417,7 +417,7 @@ if errorlevel 1 (
     echo [FAST-WHISPER] Ollama not found. Downloading installer ...
     curl -L https://ollama.com/download/OllamaSetup.exe -o "%temp%\OllamaSetup.exe"
     if errorlevel 1 (
-        echo [FAST-WHISPER] [ERROR] Ollama download failed - check your internet connection.
+        echo [FAST-WHISPER] Ollama download failed - check your internet connection.
         goto END
     )
     echo [FAST-WHISPER] Installing Ollama ...
@@ -427,7 +427,7 @@ if errorlevel 1 (
     timeout /t 3 >nul
     where ollama >nul 2>nul
     if errorlevel 1 (
-        echo [FAST-WHISPER] [ERROR] Ollama is not available - please install it manually.
+        echo [FAST-WHISPER] Ollama is not available - please install it manually.
         goto END
     )
 )
@@ -447,7 +447,7 @@ if errorlevel 1 (
     echo [FAST-WHISPER] Installing Python package "requests" ...
     python -m pip install requests
     if errorlevel 1 (
-        echo [FAST-WHISPER] [ERROR] Could not install "requests" - translation will not work.
+        echo [FAST-WHISPER] Could not install "requests" - translation will not work.
         goto END
     )
 )

@@ -33,7 +33,7 @@ def _start_server():
         time.sleep(1)
         if _server_running():
             return True
-    print("[FAST-WHISPER] [ERROR] Ollama server did not respond in time.")
+    print("[FAST-WHISPER] Ollama server did not respond in time.")
     return False
 
 def _preload_model():
@@ -268,7 +268,7 @@ def translate_text(text, context_blocks=None, ctx=3, force_variety=False, _allow
         # Fallback to original text if model returned nothing
         return result if result else text
     except Exception as e:
-        print(f"\n[FAST-WHISPER] [WARNING] Translation failed: {e}", flush=True)
+        print(f"\n[FAST-WHISPER] Translation failed: {e}", flush=True)
         return text
 
 def split_translation(text):
@@ -359,7 +359,7 @@ def process_srt(input_file, output_file, ctx=3):
                 last_flush = len(translated_blocks)
 
     except KeyboardInterrupt:
-        print(f"\n\n[FAST-WHISPER] [CANCELLED] {len(translated_blocks)} of {total_blocks} subtitles translated.", flush=True)
+        print(f"\n\n[FAST-WHISPER] {len(translated_blocks)} of {total_blocks} subtitles translated.", flush=True)
         if translated_blocks:
             write_srt(output_file, header, translated_blocks)
             print(f"[FAST-WHISPER] Partial translation saved to:\n[FAST-WHISPER] {output_file}", flush=True)
