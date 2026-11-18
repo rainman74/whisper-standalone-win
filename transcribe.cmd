@@ -63,6 +63,15 @@ echo      88    88  8    88   88  88   88   8      88  8  8 88  8 88    88 88   
 echo      88    88  8 8ee88   88  88ee 88   8      88ee8ee8 88  8 88 8ee88 88    88ee 88   8      88  8 88  8 88eee
 echo.
 echo  !file_count! file(s) loaded.
+set "li=0"
+:FILE_LIST_LOOP
+set /a li+=1
+if !li! gtr !file_count! goto FILE_LIST_DONE
+set "lf=!file[%li%]!"
+for %%F in ("!lf!") do set "lfn=%%~nF"
+echo   - !lfn!
+goto FILE_LIST_LOOP
+:FILE_LIST_DONE
 echo.
 echo  -------------------------------------------------------
 echo   What do you want to do?
