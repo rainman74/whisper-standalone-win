@@ -71,7 +71,7 @@ def stop_ollama():
 
 def setup_ollama():
     # Always restart so OLLAMA_FLASH_ATTENTION and OLLAMA_KV_CACHE_TYPE
-    # (set by Transcribe.bat) are inherited by the server process.
+    # (set by whisper.cmd) are inherited by the server process.
     if _server_running():
         print("[FAST-WHISPER] Restarting Ollama to apply GPU memory settings ...", flush=True)
         stop_ollama()

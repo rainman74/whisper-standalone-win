@@ -16,7 +16,7 @@ The Whisper executable itself is fully standalone — Python and Ollama are only
 
 ---
 
-## transcribe.cmd
+## whisper.cmd
 
 Drag-and-drop launcher for video and audio files with an interactive mode menu.
 
@@ -91,9 +91,9 @@ faster-whisper-xxl.exe "D:\VideoFolder" -l en -m large-v2 -o source --standard -
 
 ## Wrapper examples
 ```
-transcribe.cmd "D:\Video.mkv"
-transcribe.cmd "D:\Video.EN.srt"
-transcribe.cmd "D:\Sub1.EN.srt" "D:\Sub2.EN.srt" "D:\Sub3.EN.srt"
+whisper.cmd "D:\Video.mkv"
+whisper.cmd "D:\Video.EN.srt"
+whisper.cmd "D:\Sub1.EN.srt" "D:\Sub2.EN.srt" "D:\Sub3.EN.srt"
 ```
 
 ---
