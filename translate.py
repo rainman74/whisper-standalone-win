@@ -809,7 +809,7 @@ def process_txt_file(src, dst, ctx=3, target="de"):
         sys.exit(0)
 
     except TranslationError as e:
-        print(f"\n\n[FAST-WHISPER] Translation failed for {os.path.basename(input_file)}: {e}", flush=True)
+        print(f"\n\n[FAST-WHISPER] Translation failed for {os.path.basename(src)}: {e}", flush=True)
         if os.path.exists(dst):
             try:
                 os.remove(dst)
