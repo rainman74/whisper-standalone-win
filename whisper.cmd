@@ -315,7 +315,7 @@ if !job_count! gtr 0 (
     echo [FAST-WHISPER] Checking Ollama ...
     call :OLLAMA_SETUP
     if errorlevel 1 goto CLEANUP_EXIT
-    python "%DP%translate_srt.py" --batch "!JOBFILE!" !CTX! "!MODEL!"
+    python "%DP%translate.py" --batch "!JOBFILE!" !CTX! "!MODEL!"
     if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
     if errorlevel 1 (
         echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
@@ -473,7 +473,7 @@ echo.
 echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
 if errorlevel 1 goto CLEANUP_EXIT
-python "%DP%translate_srt.py" --txt-batch "!TXTJOBS!" !CTX! !TXT_TARGET!
+python "%DP%translate.py" --txt-batch "!TXTJOBS!" !CTX! !TXT_TARGET!
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 (
     echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
@@ -673,7 +673,7 @@ echo.
 echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
 if errorlevel 1 goto CLEANUP_EXIT
-python "%DP%translate_srt.py" --batch "!JOBFILE!" !CTX! "!MODEL!"
+python "%DP%translate.py" --batch "!JOBFILE!" !CTX! "!MODEL!"
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
 if exist "!JOBFILE!" del "!JOBFILE!" >nul 2>&1
@@ -856,7 +856,7 @@ exit /b
 :PYTHON_MISSING
 echo.
 echo [FAST-WHISPER] No working Python 3.7+ found.
-echo [FAST-WHISPER] translate_srt.py requires Python 3.7 or newer (3.10+ recommended).
+echo [FAST-WHISPER] translate.py requires Python 3.7 or newer (3.10+ recommended).
 echo [FAST-WHISPER] Please install Python: https://www.python.org/downloads/
 echo [FAST-WHISPER] During setup enable "Add python.exe to PATH", then run again.
 echo.
