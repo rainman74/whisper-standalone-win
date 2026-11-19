@@ -473,7 +473,7 @@ echo.
 echo [FAST-WHISPER] Checking Ollama ...
 call :OLLAMA_SETUP
 if errorlevel 1 goto CLEANUP_EXIT
-python "%DP%translate.py" --txt-batch "!TXTJOBS!" !CTX! !TXT_TARGET!
+python "%DP%translate.py" --txt-batch "!TXTJOBS!" !CTX! !TXT_TARGET! "!MODEL!"
 if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
 if errorlevel 1 (
     echo [FAST-WHISPER] Translation failed - exit code !errorlevel!

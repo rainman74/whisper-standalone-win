@@ -827,6 +827,8 @@ if __name__ == "__main__":
         dst = sys.argv[3] if len(sys.argv) >= 4 else src
         ctx = int(sys.argv[4]) if len(sys.argv) >= 5 else 3
         target = sys.argv[5].lower() if len(sys.argv) >= 6 else "de"
+        if len(sys.argv) >= 7:
+            MODEL = sys.argv[6]
         if target not in ("de", "en"):
             print(f"[FAST-WHISPER] Unknown target '{target}'. Use 'de' or 'en'.", flush=True)
             sys.exit(1)
@@ -841,6 +843,8 @@ if __name__ == "__main__":
         job = sys.argv[2]
         ctx = int(sys.argv[3]) if len(sys.argv) >= 4 else 3
         target = sys.argv[4].lower() if len(sys.argv) >= 5 else "de"
+        if len(sys.argv) >= 6:
+            MODEL = sys.argv[5]
         if target not in ("de", "en"):
             print(f"[FAST-WHISPER] Unknown target '{target}'. Use 'de' or 'en'.", flush=True)
             sys.exit(1)

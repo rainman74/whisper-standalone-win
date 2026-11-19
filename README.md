@@ -58,6 +58,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - Drop one or more `.txt` files (or a folder containing only `.txt` files). No audio/video processing and no Whisper model is used.
 - The direction is always asked: `[1]` translate to German → `<name>.DE.txt`, `[2]` translate to English → `<name>.EN.txt` (only these two targets are supported).
 - The context menu is reused: the chosen value is the number of **sentences** used as context — sentences *before* (already translated) and *after* (original) instead of subtitle blocks.
+- Context option `B` uses `translategemma:12b` (same as SRT translation), `0`/`3`/`A` use `mistral-nemo`.
 - Paragraph structure is preserved. Output is UTF-8 with CRLF line endings; input may be UTF-8 (with/without BOM), Windows-1252 or Latin-1.
 - Existing targets are skipped; files already ending in `.DE.txt`/`.EN.txt` are skipped with a hint; mixing TXT files with media/SRT files in one drop is rejected.
 - Each 2-sentence chunk is translated in two passes (draft + review), same quality pipeline as the text translator.
