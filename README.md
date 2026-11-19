@@ -62,6 +62,8 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - Paragraph structure is preserved. Output is UTF-8 with CRLF line endings; input may be UTF-8 (with/without BOM), Windows-1252 or Latin-1.
 - Existing targets are skipped; files already ending in `.DE.txt`/`.EN.txt` are skipped with a hint; mixing TXT files with media/SRT files in one drop is rejected.
 - Each 2-sentence chunk is translated in two passes (draft + review), same quality pipeline as the text translator.
+- Translation failures are fatal: the target file is not written, already translated chunks are saved as `.partial.txt`, the batch aborts and the exit code is non-zero. Request timeout: 300 s (override with `FWHISPER_OLLAMA_TIMEOUT`); no automatic retries.
+- `B` uses `translategemma:12b` (~8.1 GB VRAM). If it does not fit on the GPU it is very slow — use `0`/`3`/`A` for large texts.
 
 ---
 

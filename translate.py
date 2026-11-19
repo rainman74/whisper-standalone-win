@@ -13,6 +13,12 @@ OLLAMA_API = "http://127.0.0.1:11434"
 MODEL      = "mistral-nemo"
 TARGET_LANG = "de"   # target language: 'de' (default) or 'en'
 
+OLLAMA_TIMEOUT = int(os.environ.get("FWHISPER_OLLAMA_TIMEOUT", "300"))
+
+
+class TranslationError(Exception):
+    pass
+
 # ---------------------------------------------------------------------------
 #  Ollama Setup
 # ---------------------------------------------------------------------------
@@ -86,7 +92,7 @@ def _preload_model():
                 "num_ctx": 4096,
                 "num_gpu": 99,
             }
-        }, timeout=60)
+        }, timeout=OLLAMA_TIMEOUT)
     except:
         pass
 
@@ -178,7 +184,7 @@ def _translate_minimal(text):
             "model": MODEL, "prompt": prompt, "stream": False,
             "options": {"temperature": 0.3, "num_predict": 256,
                         "num_ctx": 4096, "num_gpu": 99}
-        }, timeout=60)
+        }, timeout=OLLAMA_TIMEOUT)
         result = response.json().get('response', '').strip()
         result = result.replace('"', '').replace('\u201e', '').replace('\u201c', '').strip()
         return result if result else None
@@ -271,7 +277,7 @@ def translate_text(text, context_blocks=None, ctx=3, force_variety=False, _allow
         }
     }
     try:
-        response = requests.post(f"{OLLAMA_API}/api/generate", json=payload, timeout=60)
+        response = requests.post(f"{OLLAMA_API}/api/generate", json=payload, timeout=OLLAMA_TIMEOUT)
         result = response.json().get('response', '').strip()
         result = result.replace('"', '').replace('\u201e', '').replace('\u201c', '').strip()
         # Strip all parenthesized content FIRST (subtitles are speech, never contain parentheses)
@@ -324,11 +330,13 @@ def translate_text(text, context_blocks=None, ctx=3, force_variety=False, _allow
                 minimal = _translate_minimal(text)
                 if minimal and similarity(text.strip(), minimal.strip()) <= 0.7:
                     result = minimal
-        # Fallback to original text if model returned nothing
-        return result if result else text
+        if not result:
+            raise TranslationError("model returned an empty translation")
+        return result
+    except TranslationError:
+        raise
     except Exception as e:
-        print(f"\n[FAST-WHISPER] Translation failed: {e}", flush=True)
-        return text
+        raise TranslationError(f"request failed: {e}") from e
 
 def split_translation(text):
     if not text: return "", ""
@@ -429,6 +437,23 @@ def process_srt(input_file, output_file, ctx=3, quiet_finish=False):
         print()
         sys.exit(0)
 
+    except TranslationError as e:
+        print(f"\n\n[FAST-WHISPER] Translation failed for {os.path.basename(input_file)}: {e}", flush=True)
+        if os.path.exists(output_file):
+            try:
+                os.remove(output_file)
+            except OSError:
+                pass
+        if translated_blocks:
+            base, ext = os.path.splitext(output_file)
+            partial = f"{base}.partial{ext}"
+            write_srt(partial, header, translated_blocks)
+            print(f"[FAST-WHISPER] Partial translation saved to:\n[FAST-WHISPER] {partial}", flush=True)
+        else:
+            print("[FAST-WHISPER] Nothing to save.", flush=True)
+        cleanup_wavs(input_file)
+        raise
+
     write_srt(output_file, header, translated_blocks)
     cleanup_wavs(input_file)
     end_timer = time.time()
@@ -464,9 +489,14 @@ def process_batch(job_file, ctx=3):
             continue
         try:
             process_srt(src, dst, ctx, quiet_finish=True)
+        except TranslationError as e:
+            print(f"[FAST-WHISPER] Translation aborted: {e}", flush=True)
+            print(f"[FAST-WHISPER] Batch aborted - {idx - 1} of {total} file(s) completed.", flush=True)
+            raise
         except Exception as e:
-            print(f"[FAST-WHISPER] Translation failed: {e}", flush=True)
-            continue
+            print(f"[FAST-WHISPER] Translation aborted: {e}", flush=True)
+            print(f"[FAST-WHISPER] Batch aborted - {idx - 1} of {total} file(s) completed.", flush=True)
+            raise TranslationError(str(e)) from e
         if os.path.exists(dst):
             print(f"\n\n[FAST-WHISPER] Translation created: {os.path.basename(dst)}", flush=True)
         else:
@@ -666,7 +696,7 @@ def _txt_call(system_prompt, user_msg, temperature=0.05):
             "top_p": 0.7,
         }
     }
-    response = requests.post(f"{OLLAMA_API}/api/chat", json=payload, timeout=120)
+    response = requests.post(f"{OLLAMA_API}/api/chat", json=payload, timeout=OLLAMA_TIMEOUT)
     return response.json().get("message", {}).get("content", "").strip()
 
 
@@ -689,15 +719,16 @@ def translate_txt_chunk(text, target, prev_sentences, next_sentences):
         draft = _txt_call(system, user_msg, temperature=0.05)
         draft = _txt_postprocess(draft, target)
         if not draft:
-            return text
+            raise TranslationError("model returned an empty translation")
         review_system = TXT_SYSTEM_REVIEW.format(tgt=tgt_name)
         review_msg = f"Original:\n{text}\n\nTranslation ({tgt_name}):\n{draft}"
         corrected = _txt_call(review_system, review_msg, temperature=0.0)
         corrected = _txt_postprocess(corrected, target)
         return corrected if corrected else draft
+    except TranslationError:
+        raise
     except Exception as e:
-        print(f"\n[FAST-WHISPER] Translation failed: {e}", flush=True)
-        return text
+        raise TranslationError(f"request failed: {e}") from e
 
 
 def _read_txt_file(path):
@@ -777,6 +808,21 @@ def process_txt_file(src, dst, ctx=3, target="de"):
         stop_ollama()
         sys.exit(0)
 
+    except TranslationError as e:
+        print(f"\n\n[FAST-WHISPER] Translation failed for {os.path.basename(input_file)}: {e}", flush=True)
+        if os.path.exists(dst):
+            try:
+                os.remove(dst)
+            except OSError:
+                pass
+        if translated:
+            partial = _txt_partial_path(dst)
+            _write_txt_output(partial, translated, para_indices)
+            print(f"[FAST-WHISPER] Partial translation saved to:\n[FAST-WHISPER] {partial}", flush=True)
+        else:
+            print("[FAST-WHISPER] Nothing to save.", flush=True)
+        raise
+
     _write_txt_output(dst, translated, para_indices)
     duration = time.time() - start_timer
     hours, rem = divmod(duration, 3600)
@@ -810,7 +856,12 @@ def process_txt_batch(job_file, ctx=3, target="de"):
         if os.path.exists(dst):
             print(f"[FAST-WHISPER] Target already exists - skipped: {os.path.basename(dst)}", flush=True)
             continue
-        created = process_txt_file(src, dst, ctx, target)
+        try:
+            created = process_txt_file(src, dst, ctx, target)
+        except TranslationError as e:
+            print(f"[FAST-WHISPER] Translation aborted: {e}", flush=True)
+            print(f"[FAST-WHISPER] Batch aborted - {idx - 1} of {total} file(s) completed.", flush=True)
+            raise
         if created:
             print(f"\n\n[FAST-WHISPER] Translation created: {os.path.basename(dst)}", flush=True)
         else:
@@ -836,7 +887,12 @@ if __name__ == "__main__":
             print(f"[FAST-WHISPER] Source file not found: {src}", flush=True)
             sys.exit(1)
         setup_ollama()
-        process_txt_file(src, dst, ctx, target)
+        try:
+            process_txt_file(src, dst, ctx, target)
+        except TranslationError as e:
+            print("[FAST-WHISPER] Translation aborted - see error above.", flush=True)
+            stop_ollama()
+            sys.exit(1)
         stop_ollama()
         sys.exit(0)
     if len(sys.argv) >= 3 and sys.argv[1] == "--txt-batch":
@@ -852,7 +908,12 @@ if __name__ == "__main__":
             print(f"[FAST-WHISPER] Job file not found: {job}", flush=True)
             sys.exit(1)
         setup_ollama()
-        process_txt_batch(job, ctx, target)
+        try:
+            process_txt_batch(job, ctx, target)
+        except TranslationError as e:
+            print("[FAST-WHISPER] Translation aborted - see error above.", flush=True)
+            stop_ollama()
+            sys.exit(1)
         stop_ollama()
         sys.exit(0)
     if len(sys.argv) >= 3 and sys.argv[1] == "--batch":
@@ -860,7 +921,12 @@ if __name__ == "__main__":
         if len(sys.argv) >= 5:
             MODEL = sys.argv[4]
         setup_ollama()
-        process_batch(sys.argv[2], ctx)
+        try:
+            process_batch(sys.argv[2], ctx)
+        except TranslationError as e:
+            print("[FAST-WHISPER] Translation aborted - see error above.", flush=True)
+            stop_ollama()
+            sys.exit(1)
         stop_ollama()
         sys.exit(0)
     if len(sys.argv) >= 3:
@@ -870,5 +936,10 @@ if __name__ == "__main__":
         if len(sys.argv) >= 6:
             TARGET_LANG = sys.argv[5].lower()
         setup_ollama()
-        process_srt(sys.argv[1], sys.argv[2], ctx)
+        try:
+            process_srt(sys.argv[1], sys.argv[2], ctx)
+        except TranslationError as e:
+            print("[FAST-WHISPER] Translation aborted - see error above.", flush=True)
+            stop_ollama()
+            sys.exit(1)
         stop_ollama()
