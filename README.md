@@ -1,6 +1,8 @@
 <img alt="image" src="https://github.com/user-attachments/assets/53384815-faa3-4e4c-9a5f-e703c405c2e5" />
 
-**Faster-Whisper-XXL** — Standalone executable and command line wrappers for Windows 10/11 x64
+ # Faster-Whisper-XXL
+
+`whisper.cmd` is a drag-and-drop Windows launcher for **Faster-Whisper-XXL** (`faster-whisper-xxl.exe`) with optional **Ollama** subtitle/text translation. It replaces the previous faster-whisper-xxl based wrapper: diarization and vocal/background extraction were intentionally removed.
 
 ---
 
