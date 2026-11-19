@@ -155,7 +155,7 @@ Includes all Standalone Faster-Whisper features plus:
 - `pyannote_onnx_v3` — Lite pyannote, similar accuracy to Silero v4, CUDA supported
 - `auditok` — Audio Activity Detection (not a VAD)
 - `webrtc` — Low accuracy, outdated
-- ~~`silero_v5_fw`~~ — Avoid (poor accuracy, fatal quirks)
+- `silero_v5_fw` — Avoid (poor accuracy, fatal quirks)
 
 **Speaker Diarization (`--diarize`):**
 - `pyannote_v3.0` — Fastest for CPU
