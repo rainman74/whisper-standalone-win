@@ -18,3 +18,5 @@ whisper-standalone-win-dlls.zip
 whisper-standalone-win.zip
 whisper-standalone-win-models-*.zip
 whisper-standalone-win-models-*.zip.*
+__pycache__/
+*.pyc

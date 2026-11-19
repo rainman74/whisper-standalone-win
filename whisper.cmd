@@ -9,7 +9,7 @@ setlocal enabledelayedexpansion
 if "%~1"=="" (
     echo.
     echo  No file detected.
-    echo  Drop a video or audio file onto this script.
+    echo  Drop a video, audio, SRT or TXT file onto this script.
     echo.
     pause
     exit /b
@@ -43,6 +43,21 @@ set "file[!file_count!]=%~1"
 set "file_list=!file_list! "%~1""
 shift
 if not "%~1"=="" goto COLLECT
+
+set "TXT_COUNT=0"
+set "OTHER_COUNT=0"
+if "!IS_DIR!"=="1" call :COUNT_DIR_TYPES
+if "!IS_DIR!"=="0" call :COUNT_ARG_TYPES
+if !TXT_COUNT! gtr 0 (
+    if !OTHER_COUNT! gtr 0 (
+        echo.
+        echo [FAST-WHISPER] Mixed TXT and media/SRT files are not supported.
+        echo [FAST-WHISPER] Drop either TXT files or media files.
+        echo.
+        goto END
+    )
+    goto MODE_TXT
+)
 
 if /i "%_ext%"==".srt" goto MODE_SRT_TRANSLATE
 
@@ -361,6 +376,113 @@ for /r %%F in (*) do (
 )
 popd
 exit /b
+
+:COUNT_ARG_TYPES
+set "ti=0"
+:COUNT_ARG_LOOP
+set /a ti+=1
+if !ti! gtr !file_count! exit /b
+set "tf=!file[%ti%]!"
+if /i "!tf:~-4!"==".txt" (
+    set /a TXT_COUNT+=1
+) else (
+    set /a OTHER_COUNT+=1
+)
+goto COUNT_ARG_LOOP
+
+:COUNT_DIR_TYPES
+pushd "!DIR_PATH!"
+for /r %%F in (*) do (
+    if /i "%%~xF"==".txt" (
+        set /a TXT_COUNT+=1
+    ) else (
+        set /a OTHER_COUNT+=1
+    )
+)
+popd
+exit /b
+
+:EXPAND_TXT_DIR
+set "file_count=0"
+pushd "!DIR_PATH!"
+for /r %%F in (*.txt) do (
+    set /a file_count+=1
+    set "file[!file_count!]=%%F"
+)
+popd
+exit /b
+
+:MODE_TXT
+call :CHECK_PYTHON
+if errorlevel 1 goto CLEANUP_EXIT
+if "!IS_DIR!"=="1" call :EXPAND_TXT_DIR
+echo.
+echo  -------------------------------------------------------
+echo   Translation direction:
+echo  -------------------------------------------------------
+echo.
+echo   [1]  Translate to German   -^>  .DE.txt
+echo   [2]  Translate to English  -^>  .EN.txt
+echo.
+choice /c 12E /n /m "  Select [1-2, E = Exit]: "
+if errorlevel 3 goto CLEANUP_EXIT
+if errorlevel 2 (set "TXT_TARGET=en" & set "TXT_EXT=EN" & goto TXT_DIR_DONE)
+if errorlevel 1 (set "TXT_TARGET=de" & set "TXT_EXT=DE" & goto TXT_DIR_DONE)
+goto MODE_TXT
+
+:TXT_DIR_DONE
+call :ASK_CONTEXT
+if /i "!CTX!"=="C" goto CANCELLED_BY_USER
+if /i "!CTX!"=="R" goto MAIN_MENU
+if /i "!CTX!"=="E" goto CLEANUP_EXIT
+set "TXTJOBS=%TEMP%\faster-whisper-txt-jobs.txt"
+del "!TXTJOBS!" >nul 2>&1
+set "TXT_JOBS=0"
+set "ti=0"
+:TXT_JOB_LOOP
+set /a ti+=1
+if !ti! gtr !file_count! goto TXT_JOB_DONE
+set "tsrc=!file[%ti%]!"
+for %%F in ("!tsrc!") do (
+    set "tpath=%%~dpF"
+    set "tname=%%~nxF"
+)
+set "tbase=!tname!"
+if /i "!tbase:~-4!"==".txt" set "tbase=!tbase:~0,-4!"
+if /i "!tbase:~-3!"==".DE" goto TXT_SKIP_INPUT
+if /i "!tbase:~-3!"==".EN" goto TXT_SKIP_INPUT
+set "tdst=!tpath!!tbase!.!TXT_EXT!.txt"
+if exist "!tdst!" goto TXT_SKIP_EXISTS
+echo "!tsrc!"^|"!tdst!" >> "!TXTJOBS!"
+set /a TXT_JOBS+=1
+goto TXT_JOB_LOOP
+:TXT_SKIP_INPUT
+echo [FAST-WHISPER] Skipping !tname! - input already has .DE.txt or .EN.txt suffix
+goto TXT_JOB_LOOP
+:TXT_SKIP_EXISTS
+echo [FAST-WHISPER] Skipping !tname! - target !tbase!.!TXT_EXT!.txt already exists
+goto TXT_JOB_LOOP
+:TXT_JOB_DONE
+if !TXT_JOBS!==0 (
+    echo.
+    echo [FAST-WHISPER] Nothing to do - no TXT files need translation.
+    echo.
+    goto CLEANUP_EXIT
+)
+echo.
+echo [FAST-WHISPER] Checking Ollama ...
+call :OLLAMA_SETUP
+if errorlevel 1 goto CLEANUP_EXIT
+python "%DP%translate_srt.py" --txt-batch "!TXTJOBS!" !CTX! !TXT_TARGET!
+if "%errorlevel%"=="-1073741510" goto CANCELLED_BY_USER
+if errorlevel 1 (
+    echo [FAST-WHISPER] Translation failed - exit code !errorlevel!
+    if exist "!TXTJOBS!" del "!TXTJOBS!" >nul 2>&1
+    goto CLEANUP_EXIT
+)
+if exist "!TXTJOBS!" del "!TXTJOBS!" >nul 2>&1
+goto CLEANUP_EXIT
+
 :: ============================================================
 ::  Error handling for transcription modes
 :: ============================================================

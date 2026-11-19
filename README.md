@@ -42,6 +42,7 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 
 **Features:**
 - Drop SRT files directly onto the script to skip the menu and go straight to translation — no Whisper involved
+- Drop TXT files directly onto the script to translate them to `.DE.txt`/`.EN.txt` (sentence-based context, no Whisper involved)
 - SRT direction is chosen per file: `.EN.srt` → `.DE.srt`, `.DE.srt` → `.EN.srt`, plain `.srt` is treated as English → `.DE.srt`; existing target subtitles are skipped
 - Any other language suffix (e.g. `.FR.srt`, `.ES.srt`, `.YUE.srt`) is translated to **both** `<name>.DE.srt` and `<name>.EN.srt` — whichever of them is missing
 - A plain `<name>.srt` counts as the English version: dropping `<name>.DE.srt` is skipped when `<name>.srt` or `<name>.EN.srt` already exists
@@ -52,6 +53,14 @@ Drag-and-drop launcher for video and audio files with an interactive mode menu.
 - Multiple files: one Whisper run and one Ollama batch per invocation (no repeated model loading)
 - Transcription defaults: `large-v2`, `--compute_type float16`, `--vad_method pyannote_v3` (CUDA auto-detected)
 - `Ctrl+C` cancels the current run: Whisper stderr is captured (no Python tracebacks) and the script ends with `[FAST-WHISPER] Cancelled by user.` (cmd still shows its own `Batchvorgang abbrechen (J/N)?` prompt — answer `N` so the script can clean up)
+
+**TXT files (translation only, no Whisper):**
+- Drop one or more `.txt` files (or a folder containing only `.txt` files). No audio/video processing and no Whisper model is used.
+- The direction is always asked: `[1]` translate to German → `<name>.DE.txt`, `[2]` translate to English → `<name>.EN.txt` (only these two targets are supported).
+- The context menu is reused: the chosen value is the number of **sentences** used as context — sentences *before* (already translated) and *after* (original) instead of subtitle blocks.
+- Paragraph structure is preserved. Output is UTF-8 with CRLF line endings; input may be UTF-8 (with/without BOM), Windows-1252 or Latin-1.
+- Existing targets are skipped; files already ending in `.DE.txt`/`.EN.txt` are skipped with a hint; mixing TXT files with media/SRT files in one drop is rejected.
+- Each 2-sentence chunk is translated in two passes (draft + review), same quality pipeline as the text translator.
 
 ---
 

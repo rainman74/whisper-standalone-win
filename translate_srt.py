@@ -477,7 +477,380 @@ def process_batch(job_file, ctx=3):
     minutes, seconds = divmod(rem, 60)
     print(f"\n[FAST-WHISPER] All translations finished in: {int(hours)}:{int(minutes):02}:{seconds:06.3f}\n", flush=True)
 
+# ---------------------------------------------------------------------------
+#  TXT translation (plain text: sentences / paragraphs, no timestamps)
+# ---------------------------------------------------------------------------
+
+TXT_ABBREVIATIONS_EN = [
+    "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Sr.", "Jr.", "St.", "vs.",
+    "etc.", "e.g.", "i.e.", "Inc.", "Ltd.", "Corp.", "No.", "Vol.",
+    "Fig.", "Rev.", "Gen.", "Sgt.", "Capt.", "Lt.", "Col.", "Maj.",
+    "approx.", "dept.", "est.", "govt.", "Jan.", "Feb.", "Mar.",
+    "Apr.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec.",
+]
+TXT_ABBREVIATIONS_DE = [
+    "Dr.", "Prof.", "Hr.", "Fr.", "Nr.", "Str.", "ca.", "z.B.",
+    "d.h.", "u.a.", "v.a.", "bzgl.", "bzw.", "evtl.", "ggf.",
+    "inkl.", "usw.", "etc.", "Abs.", "Abt.", "Bd.", "Jh.",
+]
+TXT_PLACEHOLDER = "\x00"
+
+TXT_NEUTER_NOUNS = [
+    'Stück', 'Mädchen', 'Kind', 'Haus', 'Ende', 'Mal', 'Buch', 'Bild',
+    'Fest', 'Tier', 'Spiel', 'Ziel', 'Beispiel', 'Problem', 'Ergebnis',
+    'Zeichen', 'System', 'Thema', 'Jahr', 'Land', 'Wort', 'Auto', 'Geld',
+    'Recht', 'Teil', 'Mittel', 'Paar', 'Gebäude', 'Unternehmen',
+    'Ereignis', 'Verhältnis', 'Verfahren', 'Element',
+]
+TXT_SUBST_ADJECTIVES = [
+    'Brave', 'Unartige', 'Gute', 'Böse', 'Kleine', 'Große', 'Alte',
+    'Junge', 'Kranke', 'Gesunde', 'Arme', 'Reiche', 'Fremde', 'Bekannte',
+    'Verwandte', 'Angestellte', 'Beamte', 'Jugendliche', 'Erwachsene',
+    'Deutsche', 'Angehörige', 'Abgeordnete', 'Verletzte', 'Verstorbene',
+    'Verdächtige', 'Angeklagte', 'Vorsitzende',
+]
+TXT_COLORS_DE = ['rot', 'blau', 'grün', 'schwarz', 'weiß', 'gelb',
+                 'braun', 'grau', 'gold', 'silber', 'lila', 'rosa', 'orange']
+TXT_CLOTHING_STEMS = ['jacke', 'jacken', 'mantel', 'mäntel', 'hemd',
+                      'hemden', 'hose', 'hosen', 'kittel', 'weste',
+                      'westen', 'rock', 'kleid', 'anzug', 'coat',
+                      'jacket', 'cape']
+TXT_SUBORD_CONJ = ['dass', 'weil', 'obwohl', 'wenn', 'obgleich', 'sodass',
+                   'sobald', 'solange', 'nachdem', 'bevor', 'damit',
+                   'indem', 'sofern', 'falls', 'seitdem', 'ehe']
+TXT_MONTHS_DE = ('Januar|Februar|März|April|Mai|Juni|Juli|'
+                 'August|September|Oktober|November|Dezember')
+TXT_EN_LEAK_FIXES = {
+    'completely': 'völlig', 'however': 'jedoch', 'therefore': 'daher',
+    'furthermore': 'darüber hinaus', 'meanwhile': 'inzwischen',
+    'actually': 'tatsächlich', 'basically': 'grundsätzlich',
+    'essentially': 'im Wesentlichen', 'particularly': 'besonders',
+    'approximately': 'ungefähr', 'unfortunately': 'leider',
+    'immediately': 'sofort', 'obviously': 'offensichtlich',
+    'currently': 'derzeit', 'recently': 'kürzlich', 'previously': 'zuvor',
+    'additionally': 'zusätzlich', 'especially': 'besonders',
+    'significantly': 'erheblich', 'ultimately': 'letztendlich',
+    'apparently': 'offenbar', 'frequently': 'häufig',
+    'occasionally': 'gelegentlich', 'generally': 'im Allgemeinen',
+    'entirely': 'vollständig', 'merely': 'lediglich', 'slightly': 'leicht',
+    'largely': 'weitgehend', 'potentially': 'möglicherweise',
+    'relatively': 'relativ', 'increasingly': 'zunehmend',
+    'primarily': 'hauptsächlich',
+}
+
+
+def _txt_protect_abbreviations(text):
+    abbrs = sorted(TXT_ABBREVIATIONS_DE + TXT_ABBREVIATIONS_EN,
+                   key=len, reverse=True)
+    for abbr in abbrs:
+        text = text.replace(abbr, abbr.replace(".", TXT_PLACEHOLDER))
+    text = text.replace("...", TXT_PLACEHOLDER * 3)
+    return text
+
+
+def _txt_restore_abbreviations(text):
+    return text.replace(TXT_PLACEHOLDER, ".")
+
+
+def split_sentences_txt(text):
+    protected = _txt_protect_abbreviations(text)
+    parts = re.split(r'(?<=[.!?])\s+(?=[A-Z\u00C0-\u00DC"\'\u201E\u201C\u00AB(])', protected)
+    return [_txt_restore_abbreviations(p).strip() for p in parts if p.strip()]
+
+
+def build_txt_chunks(text, sentences_per_chunk=2):
+    paragraphs = re.split(r'\n\s*\n', text.strip())
+    chunks = []
+    para_indices = []
+    for pi, para in enumerate(paragraphs):
+        para = para.strip()
+        if not para:
+            continue
+        sentences = split_sentences_txt(para)
+        for i in range(0, len(sentences), sentences_per_chunk):
+            chunks.append(" ".join(sentences[i:i + sentences_per_chunk]))
+            para_indices.append(pi)
+    return chunks, para_indices
+
+
+def _txt_fix_german(text):
+    for en, de in TXT_EN_LEAK_FIXES.items():
+        text = re.sub(rf'\b{en}\b', de, text, flags=re.IGNORECASE)
+    for noun in TXT_NEUTER_NOUNS:
+        text = re.sub(rf'\beine\b(\s+{re.escape(noun)})\b', r'ein\1', text)
+        text = re.sub(rf'\bEine\b(\s+{re.escape(noun)})\b', r'Ein\1', text)
+    for adj in TXT_SUBST_ADJECTIVES:
+        text = re.sub(rf'\bder {re.escape(adj)}\b', f'der {adj}n', text)
+    for color in TXT_COLORS_DE:
+        for stem in TXT_CLOTHING_STEMS:
+            text = re.sub(rf'\b{color}{stem}\w+', f'{color} gekleidet',
+                          text, flags=re.IGNORECASE)
+    text = re.sub(rf'auf de[mn] (\d+\.\s*(?:{TXT_MONTHS_DE}))', r'am \1', text)
+    for conj in TXT_SUBORD_CONJ:
+        text = re.sub(rf'(\w) ({conj})\b', rf'\1, \2', text)
+    text = re.sub(r',\s*,', ',', text)
+    text = re.sub(r'\b(dass|und|oder|aber|auch|noch|schon|dann|denn)\s+\1\b',
+                  r'\1', text, flags=re.IGNORECASE)
+    text = re.sub(r'\.\.(?!\.)', '.', text)
+    return text
+
+
+def _txt_postprocess(text, target):
+    text = re.sub(
+        r'\n\s*(?:'
+        r'Corrected |Corrections?\s|Changes?\s|Notes?\s*:|Explanation|Revision'
+        r'|Korrektur|Änderungen|Übersetzung\s*[:(]|Translation\s'
+        r'|Original\s*[:(]|\(Translation\b|\(Korrektur\b|\(Übersetzung\b'
+        r').*', '', text, flags=re.DOTALL | re.IGNORECASE)
+    if len(text) > 2 and text[0] == '"' and text[-1] == '"':
+        text = text[1:-1]
+    for ch in ['\u201e', '\u201c', '\u201d']:
+        text = text.replace(ch, '')
+    text = re.sub(r'  +', ' ', text)
+    if target == "de":
+        text = _txt_fix_german(text)
+    return text.strip()
+
+
+TXT_SYSTEM_TRANSLATE = (
+    "You are a professional translator. Translate the text into {tgt}.\n"
+    "The source language may be English or German - detect it automatically.\n"
+    "- Produce natural, fluent {tgt} with correct grammar, gender, and case.\n"
+    "- Use natural {tgt} sentence structure. Do not mirror the source syntax.\n"
+    "- Use exclusively established {tgt} vocabulary. Never invent compound words.\n"
+    "  If unsure, use a descriptive phrase instead.\n"
+    "- Translate ALL terms completely. No source-language words may remain.\n"
+    "- Preserve punctuation, parentheses, and dashes exactly.\n"
+    "- Output ONLY the translation. No notes, explanations, headings, or labels."
+)
+
+TXT_SYSTEM_TRANSLATE_DE = (
+    "\n- Use natural German syntax (Verbzweitstellung, Satzklammer).\n"
+    "- Translate EVERY word to German - no English word may remain.\n"
+    "- Check logical consistency and grammatical gender/case across sentences."
+)
+
+TXT_SYSTEM_TRANSLATE_EN = (
+    "\n- Use natural English syntax and idiom.\n"
+    "- Translate EVERY word to English - no German word may remain.\n"
+    "- Check tense, aspect and pronouns for consistency across sentences."
+)
+
+TXT_SYSTEM_REVIEW = (
+    "You are a {tgt} translation proofreader.\n"
+    "Correct the draft translation based on the original. You may restructure freely.\n\n"
+    "- Terminological consistency: replace ALL remaining source-language terms with {tgt} equivalents.\n"
+    "- Grammatical precision: fix gender agreement, case errors, and verb conjugation.\n"
+    "- Vocabulary: replace invented compound words with real {tgt} words or descriptive phrases.\n"
+    "- Idiomatic correctness: replace word-for-word translations with natural {tgt} phrasing.\n"
+    "- Structural integrity: do not add or omit information. Match the original precisely.\n"
+    "- CRITICAL: Output ONLY the corrected {tgt} text.\n"
+    "  Do NOT output change notes, explanations, or 'Corrected' sections."
+)
+
+
+def _txt_call(system_prompt, user_msg, temperature=0.05):
+    payload = {
+        "model": MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_msg},
+        ],
+        "stream": False,
+        "options": {
+            "num_ctx": 4096,
+            "num_gpu": 99,
+            "temperature": temperature,
+            "num_predict": 768,
+            "repeat_penalty": 1.1,
+            "top_p": 0.7,
+        }
+    }
+    response = requests.post(f"{OLLAMA_API}/api/chat", json=payload, timeout=120)
+    return response.json().get("message", {}).get("content", "").strip()
+
+
+def translate_txt_chunk(text, target, prev_sentences, next_sentences):
+    if not text.strip():
+        return text
+    src_name = "German" if target == "en" else "English"
+    tgt_name = "German" if target == "de" else "English"
+    system = TXT_SYSTEM_TRANSLATE.format(tgt=tgt_name)
+    system += TXT_SYSTEM_TRANSLATE_DE if target == "de" else TXT_SYSTEM_TRANSLATE_EN
+    user_msg = ""
+    if prev_sentences:
+        user_msg += "Previous translated sentences (for consistency):\n"
+        user_msg += "\n".join(prev_sentences) + "\n\n"
+    if next_sentences:
+        user_msg += "Next source sentences (for context only, do not translate):\n"
+        user_msg += " ".join(next_sentences) + "\n\n"
+    user_msg += f"Translate:\n{text}"
+    try:
+        draft = _txt_call(system, user_msg, temperature=0.05)
+        draft = _txt_postprocess(draft, target)
+        if not draft:
+            return text
+        review_system = TXT_SYSTEM_REVIEW.format(tgt=tgt_name)
+        review_msg = f"Original:\n{text}\n\nTranslation ({tgt_name}):\n{draft}"
+        corrected = _txt_call(review_system, review_msg, temperature=0.0)
+        corrected = _txt_postprocess(corrected, target)
+        return corrected if corrected else draft
+    except Exception as e:
+        print(f"\n[FAST-WHISPER] Translation failed: {e}", flush=True)
+        return text
+
+
+def _read_txt_file(path):
+    for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+        try:
+            with open(path, "r", encoding=enc) as f:
+                return f.read()
+        except UnicodeDecodeError:
+            continue
+    with open(path, "r", encoding="latin-1") as f:
+        return f.read()
+
+
+def _write_txt_output(path, translated_chunks, para_indices):
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        prev_para = None
+        for i, chunk in enumerate(translated_chunks):
+            if prev_para is not None and para_indices[i] != prev_para:
+                f.write("\r\n\r\n")
+            elif prev_para is not None:
+                f.write(" ")
+            f.write(chunk)
+            prev_para = para_indices[i]
+        f.write("\r\n")
+
+
+def _txt_partial_path(dst):
+    base, _ext = os.path.splitext(dst)
+    return base + ".partial.txt"
+
+
+def process_txt_file(src, dst, ctx=3, target="de"):
+    start_timer = time.time()
+    content = _read_txt_file(src)
+    chunks, para_indices = build_txt_chunks(content)
+    total = len(chunks)
+    if total == 0:
+        print(f"[FAST-WHISPER] No text found in {os.path.basename(src)} - skipped.", flush=True)
+        return False
+
+    translated = []
+    prev_translated_sentences = []
+    all_src_sentences = []
+    for chunk in chunks:
+        all_src_sentences.append(split_sentences_txt(chunk))
+
+    try:
+        for i, chunk in enumerate(chunks):
+            print(f"\r[FAST-WHISPER] Translating {i + 1} of {total} chunks ...  ", end="", flush=True)
+            next_sentences = []
+            for j in range(i + 1, len(chunks)):
+                next_sentences.extend(all_src_sentences[j])
+                if len(next_sentences) >= ctx:
+                    break
+            translation = translate_txt_chunk(
+                chunk, target,
+                prev_translated_sentences[-ctx:] if ctx > 0 else [],
+                next_sentences[:ctx] if ctx > 0 else [])
+
+            if translated and similarity(translation, translated[-1]) > 0.8:
+                translation = translate_txt_chunk(
+                    chunk, target,
+                    prev_translated_sentences[-ctx:] if ctx > 0 else [],
+                    next_sentences[:ctx] if ctx > 0 else [])
+
+            translated.append(translation)
+            prev_translated_sentences.extend(split_sentences_txt(translation))
+
+    except KeyboardInterrupt:
+        print(f"\n\n[FAST-WHISPER] Translation cancelled: {len(translated)} of {total} chunks translated.", flush=True)
+        if translated:
+            partial = _txt_partial_path(dst)
+            _write_txt_output(partial, translated, para_indices)
+            print(f"[FAST-WHISPER] Partial translation saved to:\n[FAST-WHISPER] {partial}", flush=True)
+        else:
+            print("[FAST-WHISPER] Nothing to save.", flush=True)
+        stop_ollama()
+        sys.exit(0)
+
+    _write_txt_output(dst, translated, para_indices)
+    duration = time.time() - start_timer
+    hours, rem = divmod(duration, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print(f"\n\n[FAST-WHISPER] Translation finished in: {int(hours)}:{int(minutes):02}:{seconds:06.3f}\n", flush=True)
+    return True
+
+
+def process_txt_batch(job_file, ctx=3, target="de"):
+    start_timer = time.time()
+    jobs = []
+    with open(job_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = [p.strip().strip('"') for p in line.split("|")]
+            if len(parts) >= 2 and parts[0] and parts[1]:
+                jobs.append((parts[0], parts[1]))
+    total = len(jobs)
+    if total == 0:
+        print("[FAST-WHISPER] No TXT translation jobs.", flush=True)
+        return
+    for idx, (src, dst) in enumerate(jobs, 1):
+        prefix = "" if idx == 1 else "\n"
+        print(f"{prefix}[FAST-WHISPER] Translating ({idx} of {total}): {os.path.basename(src)}", flush=True)
+        print(flush=True)
+        if not os.path.exists(src):
+            print(f"[FAST-WHISPER] Source file missing: {os.path.basename(src)}", flush=True)
+            continue
+        if os.path.exists(dst):
+            print(f"[FAST-WHISPER] Target already exists - skipped: {os.path.basename(dst)}", flush=True)
+            continue
+        created = process_txt_file(src, dst, ctx, target)
+        if created:
+            print(f"\n\n[FAST-WHISPER] Translation created: {os.path.basename(dst)}", flush=True)
+        else:
+            print(f"\n\n[FAST-WHISPER] Nothing written: {os.path.basename(dst)}", flush=True)
+    duration = time.time() - start_timer
+    hours, rem = divmod(duration, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print(f"\n[FAST-WHISPER] All TXT translations finished in: {int(hours)}:{int(minutes):02}:{seconds:06.3f}\n", flush=True)
+
+
 if __name__ == "__main__":
+    if len(sys.argv) >= 3 and sys.argv[1] == "--txt":
+        src = sys.argv[2]
+        dst = sys.argv[3] if len(sys.argv) >= 4 else src
+        ctx = int(sys.argv[4]) if len(sys.argv) >= 5 else 3
+        target = sys.argv[5].lower() if len(sys.argv) >= 6 else "de"
+        if target not in ("de", "en"):
+            print(f"[FAST-WHISPER] Unknown target '{target}'. Use 'de' or 'en'.", flush=True)
+            sys.exit(1)
+        if not os.path.exists(src):
+            print(f"[FAST-WHISPER] Source file not found: {src}", flush=True)
+            sys.exit(1)
+        setup_ollama()
+        process_txt_file(src, dst, ctx, target)
+        stop_ollama()
+        sys.exit(0)
+    if len(sys.argv) >= 3 and sys.argv[1] == "--txt-batch":
+        job = sys.argv[2]
+        ctx = int(sys.argv[3]) if len(sys.argv) >= 4 else 3
+        target = sys.argv[4].lower() if len(sys.argv) >= 5 else "de"
+        if target not in ("de", "en"):
+            print(f"[FAST-WHISPER] Unknown target '{target}'. Use 'de' or 'en'.", flush=True)
+            sys.exit(1)
+        if not os.path.exists(job):
+            print(f"[FAST-WHISPER] Job file not found: {job}", flush=True)
+            sys.exit(1)
+        setup_ollama()
+        process_txt_batch(job, ctx, target)
+        stop_ollama()
+        sys.exit(0)
     if len(sys.argv) >= 3 and sys.argv[1] == "--batch":
         ctx = int(sys.argv[3]) if len(sys.argv) >= 4 else 3
         if len(sys.argv) >= 5:
