@@ -20,3 +20,4 @@ whisper-standalone-win-models-*.zip
 whisper-standalone-win-models-*.zip.*
 __pycache__/
 *.pyc
+Examples/
